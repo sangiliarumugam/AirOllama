@@ -1,0 +1,2125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AirOllama | On-Demand Layer Streaming LLM Server</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <style>
+    :root {
+      --bg-dark: #090d16;
+      --card-bg: rgba(18, 24, 38, 0.75);
+      --card-border: rgba(255, 255, 255, 0.08);
+      --accent-cyan: #00f2fe;
+      --accent-purple: #4facfe;
+      --accent-pink: #ff0844;
+      --text-main: #f1f5f9;
+      --text-muted: #94a3b8;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Outfit', sans-serif;
+      background: var(--bg-dark);
+      background-image: 
+        radial-gradient(at 0% 0%, rgba(0, 242, 254, 0.12) 0px, transparent 50%),
+        radial-gradient(at 100% 100%, rgba(79, 172, 254, 0.12) 0px, transparent 50%);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      border-bottom: 1px solid var(--card-border);
+      backdrop-filter: blur(16px);
+      background: rgba(9, 13, 22, 0.8);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .nav-container {
+      max-width: 1300px;
+      margin: 0 auto;
+      padding: 1rem 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      cursor: pointer;
+      user-select: none;
+    }
+
+
+    .logo-badge {
+      width: 40px;
+      height: 40px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 1.25rem;
+      color: #000;
+      box-shadow: 0 0 20px rgba(0, 242, 254, 0.4);
+    }
+
+    .brand-title {
+      font-size: 1.25rem;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+    }
+
+    .brand-title span {
+      background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .port-badge {
+      background: rgba(0, 242, 254, 0.1);
+      border: 1px solid rgba(0, 242, 254, 0.3);
+      color: var(--accent-cyan);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+      padding: 0.25rem 0.6rem;
+      border-radius: 20px;
+    }
+
+    .nav-tabs {
+      display: flex;
+      gap: 0.5rem;
+      background: rgba(255, 255, 255, 0.03);
+      padding: 0.3rem;
+      border-radius: 12px;
+      border: 1px solid var(--card-border);
+    }
+
+    .tab-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: 0.9rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .tab-btn:hover {
+      color: var(--text-main);
+    }
+
+    .tab-btn.active {
+      background: rgba(255, 255, 255, 0.1);
+      color: #fff;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    }
+
+    main {
+      max-width: 1300px;
+      margin: 2rem auto;
+      padding: 0 1.5rem;
+      width: 100%;
+      flex: 1;
+    }
+
+    .view-panel {
+      display: none;
+    }
+
+    .view-panel.active {
+      display: block;
+    }
+
+    /* Cards & Grids */
+    .grid-stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 1.25rem;
+      margin-bottom: 2rem;
+    }
+
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      backdrop-filter: blur(12px);
+      border-radius: 16px;
+      padding: 1.5rem;
+      transition: transform 0.2s ease, border-color 0.2s ease;
+    }
+
+    .card:hover {
+      border-color: rgba(255, 255, 255, 0.15);
+    }
+
+    .stat-label {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      margin-bottom: 0.5rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .stat-val {
+      font-size: 1.8rem;
+      font-weight: 700;
+      color: #fff;
+      display: flex;
+      align-items: baseline;
+      gap: 0.4rem;
+    }
+
+    .stat-val small {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      font-weight: 400;
+    }
+
+    /* Layer Monitor Bar */
+    .layer-monitor-card {
+      margin-bottom: 2rem;
+    }
+
+    .layer-bar-container {
+      display: flex;
+      gap: 4px;
+      margin-top: 1rem;
+      background: rgba(0, 0, 0, 0.3);
+      padding: 8px;
+      border-radius: 12px;
+      overflow-x: auto;
+    }
+
+    .layer-box {
+      flex: 1;
+      height: 36px;
+      min-width: 20px;
+      background: rgba(255, 255, 255, 0.06);
+      border: none;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.75rem;
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--text-muted);
+      transition: all 0.15s ease;
+    }
+
+    .layer-box.active {
+      background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple));
+      color: #000;
+      font-weight: 700;
+      min-width: 54px;
+      padding: 0 10px;
+      flex-grow: 1.8;
+      box-shadow: 0 0 14px rgba(0, 242, 254, 0.85);
+      transform: scaleY(1.12);
+      z-index: 2;
+    }
+
+    /* LED Panel & Speed Monitor Styles */
+    @keyframes ledBlink {
+      0%, 100% {
+        opacity: 1.0;
+      }
+      50% {
+        opacity: 0.15;
+      }
+    }
+
+    .led-dot {
+      width: 13px;
+      height: 13px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      box-shadow: none !important;
+      transition: background-color 0.2s ease;
+    }
+
+    .led-dot.active {
+      background: #ffb300;
+      border-color: #ffd54f;
+      box-shadow: none !important;
+      animation: ledBlink 0.6s infinite ease-in-out;
+    }
+
+    .led-dot.completed {
+      background: #00e676;
+      border-color: #69f0ae;
+      box-shadow: none !important;
+      animation: none !important;
+      opacity: 1.0;
+    }
+
+
+
+    /* Playground / Chat */
+    .chat-container {
+      display: grid;
+      grid-template-columns: 320px 1fr;
+      gap: 1.5rem;
+      height: 650px;
+    }
+
+    .chat-sidebar {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      padding: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+
+    .form-group label {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    select, input, textarea {
+      background: rgba(0, 0, 0, 0.4);
+      border: 1px solid var(--card-border);
+      color: #fff;
+      padding: 0.75rem 1rem;
+      border-radius: 10px;
+      font-family: inherit;
+      font-size: 0.9rem;
+      outline: none;
+      transition: border-color 0.2s ease;
+    }
+
+    select:focus, input:focus, textarea:focus {
+      border-color: var(--accent-cyan);
+    }
+
+    .chat-main {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .chat-messages {
+      flex: 1;
+      padding: 1.5rem;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .msg {
+      max-width: 80%;
+      padding: 1rem 1.25rem;
+      border-radius: 16px;
+      font-size: 0.95rem;
+      line-height: 1.55;
+      word-break: break-word;
+    }
+
+    /* Markdown Styling Inside Chat Bubbles */
+    .msg p {
+      margin: 0 0 0.6rem 0;
+      line-height: 1.55;
+    }
+    .msg p:last-child {
+      margin-bottom: 0;
+    }
+    .msg h1, .msg h2, .msg h3, .msg h4, .msg h5, .msg h6 {
+      color: #fff;
+      margin: 0.8rem 0 0.4rem 0;
+      font-weight: 700;
+      line-height: 1.3;
+    }
+    .msg h1 { font-size: 1.3rem; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 0.3rem; }
+    .msg h2 { font-size: 1.15rem; }
+    .msg h3 { font-size: 1.05rem; }
+    .msg ul, .msg ol {
+      margin: 0.4rem 0 0.6rem 1.4rem;
+      padding: 0;
+    }
+    .msg li {
+      margin-bottom: 0.25rem;
+      line-height: 1.5;
+    }
+    .msg blockquote {
+      border-left: 3px solid var(--accent-cyan);
+      margin: 0.6rem 0;
+      padding: 0.4rem 0.8rem;
+      background: rgba(0, 242, 254, 0.05);
+      color: #d1d5db;
+      font-style: italic;
+      border-radius: 0 6px 6px 0;
+    }
+    .msg table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 0.8rem 0;
+      font-size: 0.85rem;
+    }
+    .msg th, .msg td {
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      padding: 0.4rem 0.6rem;
+      text-align: left;
+    }
+    .msg th {
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--accent-cyan);
+      font-weight: 600;
+    }
+    .msg code {
+      font-family: 'Fira Code', 'JetBrains Mono', Consolas, Monaco, monospace;
+      font-size: 0.88em;
+      background: rgba(255, 255, 255, 0.1);
+      color: #ffaa00;
+      padding: 0.15rem 0.35rem;
+      border-radius: 4px;
+    }
+    .msg pre {
+      position: relative;
+      background: #0b0f19;
+      border: 1px solid rgba(0, 242, 254, 0.2);
+      border-radius: 8px;
+      margin: 0.6rem 0;
+      overflow-x: auto;
+      padding: 0;
+    }
+    .msg pre code {
+      display: block;
+      padding: 0.75rem 0.9rem;
+      background: transparent;
+      color: #e2e8f0;
+      white-space: pre;
+      border-radius: 0;
+    }
+    .code-block-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(255, 255, 255, 0.04);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      padding: 0.3rem 0.75rem;
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      font-family: sans-serif;
+    }
+    .copy-code-btn {
+      background: rgba(0, 242, 254, 0.15);
+      color: var(--accent-cyan);
+      border: 1px solid rgba(0, 242, 254, 0.3);
+      border-radius: 4px;
+      padding: 0.15rem 0.5rem;
+      font-size: 0.7rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .copy-code-btn:hover {
+      background: var(--accent-cyan);
+      color: #000;
+      font-weight: bold;
+    }
+    .msg a {
+      color: var(--accent-cyan);
+      text-decoration: underline;
+    }
+
+
+    .msg.user {
+      align-self: flex-end;
+      background: linear-gradient(135deg, rgba(0, 242, 254, 0.2), rgba(79, 172, 254, 0.2));
+      border: 1px solid rgba(0, 242, 254, 0.3);
+      color: #fff;
+      border-bottom-right-radius: 4px;
+    }
+
+    .msg.assistant {
+      align-self: flex-start;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--card-border);
+      border-bottom-left-radius: 4px;
+    }
+
+    .chat-input-area {
+      padding: 1rem 1.5rem;
+      border-top: 1px solid var(--card-border);
+      display: flex;
+      gap: 0.75rem;
+    }
+
+    .chat-input-area input {
+      flex: 1;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple));
+      border: none;
+      color: #000;
+      font-weight: 600;
+      padding: 0.75rem 1.5rem;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: opacity 0.2s ease, transform 0.1s ease;
+    }
+
+    .btn-primary:hover {
+      opacity: 0.9;
+    }
+
+    .btn-primary:active {
+      transform: scale(0.98);
+    }
+
+    .btn-danger {
+      background: var(--danger);
+      color: white;
+      border: none;
+      font-weight: 600;
+      padding: 0.75rem 1.25rem;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: opacity 0.2s ease, transform 0.1s ease;
+    }
+
+    .btn-danger:hover {
+      opacity: 0.9;
+    }
+
+    /* Model Manager */
+    .models-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 1rem;
+      margin-top: 1.5rem;
+    }
+
+    .model-card {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--card-border);
+      border-radius: 14px;
+      padding: 1.25rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    /* Multi-threaded Parallel Download Monitor UI */
+    .parallel-download-box {
+      margin-top: 1rem;
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .download-layer-row {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+
+    .download-layer-header {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.8rem;
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--text-muted);
+    }
+
+    .progress-bar-bg {
+      width: 100%;
+      height: 8px;
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .progress-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent-cyan), var(--accent-purple));
+      width: 0%;
+      transition: width 0.3s ease;
+    }
+
+    .code-block {
+      background: #000;
+      border: 1px solid var(--card-border);
+      padding: 1rem;
+      border-radius: 12px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85rem;
+      color: var(--accent-cyan);
+      overflow-x: auto;
+      margin-top: 0.75rem;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="nav-container">
+      <div class="brand" onclick="switchTab('dashboard')">
+        <div class="logo-badge">AIR</div>
+        <div class="brand-title">Air<span>Ollama</span></div>
+        <div class="port-badge">:11211</div>
+      </div>
+
+      <div class="nav-tabs">
+        <button class="tab-btn active" onclick="switchTab('dashboard')">Dashboard</button>
+        <button class="tab-btn" onclick="switchTab('playground')">Playground</button>
+        <button class="tab-btn" onclick="switchTab('models')">Models</button>
+        <button class="tab-btn" onclick="switchTab('settings')">Settings</button>
+        <button class="tab-btn" onclick="switchTab('api')">API Docs</button>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <!-- Tab 1: Dashboard -->
+    <div id="tab-dashboard" class="view-panel active">
+      <div class="grid-stats">
+        <div class="card">
+          <div class="stat-label">Active Model</div>
+          <div class="stat-val" id="stat-model" style="font-size: 1.4rem; word-break: break-all; overflow-wrap: anywhere; line-height: 1.25;">None</div>
+        </div>
+        <div class="card">
+          <div class="stat-label">Model RAM</div>
+          <div class="stat-val" id="stat-model-ram">0.00 <small>GB</small></div>
+        </div>
+        <div class="card">
+          <div class="stat-label">Engine Overhead</div>
+          <div class="stat-val" id="stat-engine-ram" style="font-size: 1.05rem; color: var(--text-muted);">0.00 <small>GB</small></div>
+        </div>
+        <div class="card">
+          <div class="stat-label">Available System RAM</div>
+          <div class="stat-val" id="stat-sysram">0.0 / 0.0 <small>GB</small></div>
+        </div>
+        <div class="card">
+          <div class="stat-label">VRAM / Metal Memory</div>
+          <div class="stat-val" id="stat-vram">0.00 <small>GB</small></div>
+        </div>
+        <div class="card" style="grid-column: span 2; min-width: 320px;">
+          <div class="stat-label">Active Layer</div>
+          <div class="stat-val" id="stat-layer" style="font-size: 1.15rem; word-break: break-word;">Idle</div>
+        </div>
+        <div class="card" id="card-offload" style="border-color: rgba(255, 170, 0, 0.3);">
+          <div class="stat-label">Disk Offload Status</div>
+          <div class="stat-val" id="stat-offload" style="font-size: 1.05rem;">Inactive</div>
+        </div>
+      </div>
+
+      <!-- Live Disk Offload Activity Monitor Card -->
+      <div class="card" style="margin-top: 1.25rem; border-color: rgba(255, 170, 0, 0.3); background: rgba(255, 170, 0, 0.03);">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <h3 style="color: #ffaa00; font-size: 1.05rem; display: flex; align-items: center; gap: 0.5rem; margin: 0;">
+            💾 Disk Offload & Memory Paging Activity
+          </h3>
+          <span id="offload-badge" style="background: rgba(0, 242, 254, 0.1); color: var(--accent-cyan); border: 1px solid rgba(0, 242, 254, 0.3); padding: 0.25rem 0.6rem; border-radius: 6px; font-size: 0.78rem; font-weight: 600;">
+            ⚡ 100% RAM / GPU Active
+          </span>
+        </div>
+        <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 0.35rem;">
+          Dynamic weight paging: Layers beyond your RAM/VRAM capacity are streamed directly from disk storage on-demand.
+        </p>
+        
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-top: 1rem;">
+          <div style="background: rgba(0,0,0,0.3); padding: 0.75rem 1rem; border-radius: 8px; border: 1px solid var(--card-border);">
+            <div style="font-size: 0.75rem; color: var(--text-secondary); font-weight: 600;">RAM Active Layers</div>
+            <div id="offload-ram-layers" style="font-size: 1.2rem; font-weight: bold; color: var(--accent-cyan); font-family: monospace; margin-top: 0.2rem;">
+              0 / 0 layers
+            </div>
+          </div>
+          <div style="background: rgba(0,0,0,0.3); padding: 0.75rem 1rem; border-radius: 8px; border: 1px solid var(--card-border);">
+            <div style="font-size: 0.75rem; color: var(--text-secondary); font-weight: 600;">Disk Offloaded Layers</div>
+            <div id="offload-disk-layers" style="font-size: 1.2rem; font-weight: bold; color: #ffaa00; font-family: monospace; margin-top: 0.2rem;">
+              0 / 0 layers
+            </div>
+          </div>
+          <div style="background: rgba(0,0,0,0.3); padding: 0.75rem 1rem; border-radius: 8px; border: 1px solid var(--card-border);">
+            <div style="font-size: 0.75rem; color: var(--text-secondary); font-weight: 600;">Disk Offload Cache Size</div>
+            <div id="offload-disk-size" style="font-size: 1.2rem; font-weight: bold; color: var(--text-main); font-family: monospace; margin-top: 0.2rem;">
+              0.0 GB
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card layer-monitor-card" style="margin-top: 1.25rem;">
+        <h3>Layer-by-Layer On-Demand Stream Visualizer</h3>
+        <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0.25rem;">
+          Real-time visualization of model weights loaded into memory on-demand per step (AirLLM style).
+        </p>
+        <div class="layer-bar-container" id="layer-boxes">
+          <div class="layer-box">Ready</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab 2: Playground -->
+    <div id="tab-playground" class="view-panel">
+      <div class="chat-container">
+        <div class="chat-sidebar">
+          <h3>Parameters</h3>
+          <div class="form-group">
+            <label>Model</label>
+            <select id="chat-model-select" onchange="onModelSelectChange(this.value)">
+              <option value="">Select or pull a model...</option>
+            </select>
+
+            <div style="display: flex; gap: 0.35rem; margin-top: 0.5rem;">
+              <button class="btn-primary" style="flex: 1; padding: 0.45rem 0.2rem; font-size: 0.78rem; background: var(--accent-cyan); color: #000; font-weight: bold;" onclick="preloadCurrentModel()">⚡ Preload</button>
+              <button class="btn-danger" style="flex: 1; padding: 0.45rem 0.2rem; font-size: 0.78rem;" onclick="unloadActiveModel()">🧹 Unload</button>
+              <button class="btn-primary" style="flex: 1; padding: 0.45rem 0.2rem; font-size: 0.78rem; background: rgba(255, 255, 255, 0.1); color: #fff;" onclick="clearChat()">🆕 Clear</button>
+            </div>
+
+          </div>
+
+
+          <div class="form-group" style="background: rgba(0, 242, 254, 0.05); padding: 0.75rem; border-radius: 8px; border: 1px solid rgba(0, 242, 254, 0.2); margin-top: 1rem;">
+            <label style="display: flex; align-items: center; justify-content: space-between; cursor: pointer; color: var(--accent-cyan); font-weight: 600;">
+              <span>🌐 Live Web Search</span>
+              <input type="checkbox" id="param-websearch" style="width: auto;">
+            </label>
+          </div>
+
+
+          <div class="form-group" style="background: rgba(157, 78, 221, 0.05); padding: 0.75rem; border-radius: 8px; border: 1px solid rgba(157, 78, 221, 0.2);">
+            <label style="display: flex; align-items: center; justify-content: space-between; cursor: pointer; color: #d8b4fe; font-weight: 600;">
+              <span>📍 System Location</span>
+              <input type="checkbox" id="param-location-toggle" checked style="width: auto;">
+            </label>
+            <input type="text" id="param-location-input" placeholder="Detecting location..." style="margin-top: 0.4rem; font-size: 0.8rem; background: rgba(0, 0, 0, 0.4); border: 1px solid rgba(157, 78, 221, 0.3); color: #fff; border-radius: 6px; padding: 0.4rem; width: 100%;">
+          </div>
+
+
+          <div class="form-group" id="ram-cap-container" style="background: rgba(0, 242, 254, 0.05); padding: 0.85rem; border-radius: 12px; border: 1px solid rgba(0, 242, 254, 0.3); transition: opacity 0.3s ease;">
+            <label style="display: flex; align-items: center; justify-content: space-between; color: var(--accent-cyan); font-weight: 600;">
+              <span>⚡ RAM & Speed Cap</span>
+              <span id="ram-slider-val" style="font-size: 0.8rem; color: #fff; background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple)); padding: 3px 10px; border-radius: 6px; font-weight: bold;">8 GB</span>
+            </label>
+            <input type="range" id="param-max-ram" min="2" max="48" step="1" value="8" style="width: 100%; margin-top: 0.6rem;" oninput="updateRamCapBadge(this.value)" onchange="onRamCapChanged(this.value)">
+
+            <div id="ram-speed-preset-info" style="font-size: 0.78rem; color: var(--accent-cyan); margin-top: 0.4rem; font-weight: 500;">
+              🚀 Higher RAM = Faster output response (More layers active in GPU VRAM)
+            </div>
+            
+            <div id="ram-preset-buttons" style="display: flex; gap: 0.35rem; margin-top: 0.6rem;">
+              <button type="button" class="btn-primary" style="flex: 1; padding: 0.35rem 0.2rem; font-size: 0.72rem; background: rgba(255, 170, 0, 0.15); color: #ffaa00; border: 1px solid rgba(255, 170, 0, 0.3);" onclick="setRamPreset('min')">🐢 Min RAM</button>
+              <button type="button" class="btn-primary" style="flex: 1; padding: 0.35rem 0.2rem; font-size: 0.72rem; background: rgba(157, 78, 221, 0.2); color: #d8b4fe; border: 1px solid rgba(157, 78, 221, 0.4);" onclick="setRamPreset('balanced')">⚡ Balanced</button>
+              <button type="button" class="btn-primary" style="flex: 1; padding: 0.35rem 0.2rem; font-size: 0.72rem; background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple)); color: #000; font-weight: bold;" onclick="setRamPreset('max')">🚀 Max Speed</button>
+            </div>
+
+            <!-- Token Per Second Live Metric Card -->
+            <div id="tok-speed-card" style="margin-top: 0.75rem; padding: 0.55rem 0.75rem; background: rgba(0, 242, 254, 0.06); border: 1px solid rgba(0, 242, 254, 0.2); border-radius: 8px; display: flex; align-items: center; justify-content: space-between;">
+              <div style="font-size: 0.76rem; color: var(--text-secondary); font-weight: 600; display: flex; align-items: center; gap: 0.3rem;">
+                ⚡ Generation Speed:
+              </div>
+              <div id="tps-display" style="font-size: 0.95rem; font-weight: 800; color: var(--accent-cyan); font-family: monospace;">
+                0.0 tok/s
+              </div>
+            </div>
+          </div>
+
+
+
+          <div class="form-group">
+            <label>Temperature</label>
+            <input type="number" id="param-temp" value="0.7" step="0.1" min="0" max="2">
+          </div>
+          <div class="form-group">
+            <label>Max Output Tokens</label>
+            <input type="number" id="param-tokens" value="2048" step="128" min="64" max="4096">
+          </div>
+
+
+          <div class="form-group">
+            <label>System Prompt</label>
+            <textarea id="param-system" rows="3" placeholder="You are a helpful AI assistant..."></textarea>
+          </div>
+
+        </div>
+        <div class="chat-main">
+          <div class="chat-messages" id="chat-messages">
+            <div class="msg assistant">
+              <p>👋 Hello! I am <strong>AirOllama</strong>. Select a model and send a message to start streaming layer-by-layer inference.</p>
+            </div>
+          </div>
+          <form id="chat-form" class="chat-input-area" onsubmit="handleChatSubmit(event)">
+            <input type="text" id="chat-input" placeholder="Ask a question..." autocomplete="off">
+            <button type="submit" class="btn-primary" id="btn-chat-send">Send 🚀</button>
+            <button type="button" class="btn-danger" id="btn-chat-stop" onclick="stopGeneration()" style="display: none;">🛑 Stop</button>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab 3: Models -->
+    <div id="tab-models" class="view-panel">
+      <div class="card">
+        <h3>Pull Model (Multi-Threaded Parallel Download)</h3>
+        <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0.25rem;">
+          Enter any standard Ollama model tag (e.g. <code>llama3.2</code>, <code>qwen2.5:0.5b</code>, <code>tinyllama</code>, <code>mistral</code>, <code>gemma2:2b</code>) or HuggingFace repo ID.
+        </p>
+        <div style="display: flex; gap: 0.75rem; margin-top: 1rem; align-items: center; flex-wrap: wrap;">
+          <select id="pull-source-select" style="min-width: 210px; background: rgba(0, 0, 0, 0.6); border: 1px solid var(--accent-cyan);">
+            <option value="auto">⚡ Auto (Smart Fallback)</option>
+            <option value="ollama">📦 Ollama Registry (registry.ollama.ai)</option>
+            <option value="huggingface">🤗 Hugging Face Hub (huggingface.co)</option>
+          </select>
+          <input type="text" id="pull-model-input" placeholder="e.g. llama3.2 or gemma4:31b-mlx or unsloth/Llama-3.2-1B-Instruct" style="flex: 1; min-width: 250px;">
+          <button class="btn-primary" id="btn-pull" onclick="pullModel()">Pull Model</button>
+          <button class="btn-danger" id="btn-cancel-pull" onclick="cancelPull()" style="display: none;">Cancel Pull</button>
+        </div>
+
+        <div id="pull-status" style="margin-top: 0.75rem; color: var(--accent-cyan); font-size: 0.9rem;"></div>
+
+        <!-- Global Download Progress & LED Panel Card -->
+        <div id="global-download-container" style="display: none; margin-top: 1.25rem; background: rgba(10, 15, 30, 0.75); padding: 1.5rem; border-radius: 16px; border: 1px solid rgba(0, 242, 254, 0.3); backdrop-filter: blur(12px); box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);">
+          
+          <!-- Header with Speed & Progress Stats -->
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; flex-wrap: wrap; gap: 0.5rem;">
+            <h4 style="margin: 0; font-size: 1rem; color: var(--accent-cyan); display: flex; align-items: center; gap: 0.5rem;">
+              <span>🚀 Overall Download Progress</span>
+            </h4>
+            
+            <div style="display: flex; align-items: center; gap: 1.25rem;">
+              <!-- Real-Time Speed Monitor -->
+              <div style="background: rgba(0, 242, 254, 0.1); border: 1px solid rgba(0, 242, 254, 0.3); padding: 0.35rem 0.85rem; border-radius: 8px; font-family: 'JetBrains Mono', monospace; font-size: 0.85rem; color: var(--accent-cyan); font-weight: 600; display: flex; align-items: center; gap: 0.4rem;">
+                <span>⚡ Speed:</span>
+                <span id="download-speed-value" style="color: #00f2fe; font-weight: 700;">0.0 MB/s</span>
+              </div>
+
+              <!-- Size and Percent Stats -->
+              <span id="global-download-stats" style="font-family: 'JetBrains Mono', monospace; font-size: 0.9rem; color: #ffffff; font-weight: 600;">0.00 GB / 0.00 GB (0%)</span>
+            </div>
+          </div>
+
+          <!-- Overall Progress Bar -->
+          <div class="progress-bar-bg" style="height: 14px; border-radius: 7px; background: rgba(255, 255, 255, 0.08); overflow: hidden; margin-bottom: 1.25rem; border: 1px solid rgba(255, 255, 255, 0.1);">
+            <div id="global-progress-fill" class="progress-bar-fill" style="width: 0%; height: 100%; border-radius: 7px; background: linear-gradient(90deg, #00f2fe, #4facfe, #00e676); transition: width 0.3s ease; box-shadow: 0 0 12px rgba(0, 242, 254, 0.6);"></div>
+          </div>
+
+          <!-- LED Matrix Panel for Active & Completed Threads -->
+          <div style="background: rgba(0, 0, 0, 0.45); padding: 1rem 1.25rem; border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.08);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; flex-wrap: wrap; gap: 0.5rem;">
+              <div style="font-size: 0.85rem; font-weight: 600; display: flex; align-items: center; gap: 1.25rem;">
+                <span style="display: flex; align-items: center; gap: 0.4rem;">
+                  <span class="led-dot active" style="width: 10px; height: 10px; display: inline-block;"></span>
+                  <span style="color: #ffffff;">Active Threads:</span>
+                  <span id="led-active-count" style="color: #ffb300; font-weight: 700; font-family: 'JetBrains Mono', monospace; font-size: 0.95rem;">0</span>
+                </span>
+
+                <span style="display: flex; align-items: center; gap: 0.4rem;">
+                  <span class="led-dot completed" style="width: 10px; height: 10px; display: inline-block;"></span>
+                  <span style="color: #ffffff;">Completed Threads:</span>
+                  <span id="led-completed-count" style="color: #00e676; font-weight: 700; font-family: 'JetBrains Mono', monospace; font-size: 0.95rem;">0</span>
+                </span>
+
+              </div>
+
+              <span id="led-total-count" style="font-size: 0.8rem; color: var(--text-muted); font-family: 'JetBrains Mono', monospace;">Total Worker Streams: 0</span>
+            </div>
+
+            <!-- LED Dot Matrix Grid -->
+            <div id="led-dot-matrix" style="display: flex; flex-wrap: wrap; gap: 6px; max-height: 140px; overflow-y: auto; padding: 4px;">
+              <!-- Dynamic LED Dots -->
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+
+
+      <h3 style="margin-top: 2rem;">Cached Models</h3>
+      <div class="models-list" id="models-list">
+        <!-- Dynamic models -->
+      </div>
+    </div>
+
+    <!-- Tab 4: Settings -->
+    <div id="tab-settings" class="view-panel">
+      <div class="card">
+        <h3>Settings & Model Storage Repository</h3>
+        <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0.25rem;">
+          Configure model storage directory path and Hugging Face API User Access Tokens on your Mac.
+        </p>
+        
+        <div class="form-group" style="margin-top: 1.25rem;">
+          <label>Model Storage Directory Path</label>
+          <div style="display: flex; gap: 0.75rem;">
+            <input type="text" id="settings-models-dir" placeholder="/path/to/models/directory" style="flex: 1; font-family: 'JetBrains Mono', monospace;">
+            <button class="btn-primary" onclick="saveSettings()">Save Directory</button>
+          </div>
+          <span id="settings-status" style="font-size: 0.85rem; color: var(--success); margin-top: 0.25rem;"></span>
+        </div>
+
+        <div class="form-group" style="margin-top: 1.25rem; background: rgba(255, 170, 0, 0.04); padding: 1rem; border-radius: 12px; border: 1px solid rgba(255, 170, 0, 0.2);">
+          <label style="color: #ffaa00; font-weight: 600;">💾 Disk Offload Cache Directory Path</label>
+          <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem; margin-bottom: 0.5rem;">
+            Custom directory path where layer streaming weight cache files are stored on disk.
+          </div>
+          <div style="display: flex; gap: 0.75rem;">
+            <input type="text" id="settings-offload-dir" placeholder="/path/to/offload/cache" style="flex: 1; font-family: 'JetBrains Mono', monospace;">
+            <button class="btn-primary" style="background: rgba(255, 170, 0, 0.2); color: #ffaa00; border: 1px solid rgba(255, 170, 0, 0.4);" onclick="saveOffloadDir()">Save Offload Path</button>
+          </div>
+          <span id="offload-dir-status" style="font-size: 0.85rem; color: var(--success); margin-top: 0.25rem;"></span>
+        </div>
+
+        <div class="form-group" style="margin-top: 1.5rem; background: rgba(0, 242, 254, 0.04); padding: 1rem; border-radius: 12px; border: 1px solid rgba(0, 242, 254, 0.15);">
+          <label style="color: var(--accent-cyan); font-weight: 600;">🤗 Hugging Face User Access Token (HF_TOKEN)</label>
+          <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem; margin-bottom: 0.5rem;">
+            Unlocks maximum CDN speed bandwidth and gated repositories (e.g. Meta Llama, Gemma) when pulling models from Hugging Face.
+          </div>
+          <div style="display: flex; gap: 0.75rem;">
+            <input type="password" id="settings-hf-token" placeholder="hf_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" style="flex: 1; font-family: 'JetBrains Mono', monospace;">
+            <button class="btn-primary" onclick="saveHFToken()">Save Token</button>
+            <button class="btn-danger" onclick="clearHFToken()" id="btn-clear-hf-token" style="display: none;">Clear Token</button>
+          </div>
+          <span id="hf-token-status" style="font-size: 0.85rem; color: var(--success); margin-top: 0.25rem;"></span>
+        </div>
+
+        <div style="display: flex; gap: 1rem; margin-top: 1.5rem;">
+          <div style="flex: 1; background: rgba(255, 255, 255, 0.03); padding: 1rem; border-radius: 12px; border: 1px solid var(--card-border);">
+            <div style="font-size: 0.85rem; color: var(--text-muted);">Active Execution Device</div>
+            <div style="font-size: 1.1rem; font-weight: 600; color: var(--accent-cyan); margin-top: 0.25rem;" id="settings-device">Loading...</div>
+          </div>
+          <div style="flex: 2; background: rgba(255, 255, 255, 0.03); padding: 1rem; border-radius: 12px; border: 1px solid var(--card-border);">
+            <div style="font-size: 0.85rem; color: var(--text-muted);">Persistent Config File</div>
+            <div style="font-size: 0.9rem; font-weight: 500; color: var(--accent-cyan); font-family: 'JetBrains Mono', monospace; margin-top: 0.25rem;" id="settings-config-path">~/.airollama/config.json</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+
+
+    <!-- Tab 5: API Docs -->
+    <div id="tab-api" class="view-panel">
+      <div class="card">
+        <h3>Ollama API Endpoint Compatibility (Port 11211)</h3>
+        <p style="color: var(--text-muted); margin-top: 0.5rem;">
+          AirOllama runs on <strong>http://localhost:11211</strong> and is compatible with Ollama SDKs and OpenAI tools.
+        </p>
+
+        <h4 style="margin-top: 1.5rem;">cURL Chat Completion</h4>
+        <div class="code-block">curl http://localhost:11211/api/chat -d '{
+  "model": "TinyLlama/TinyLlama-1.1B-Chat-v1.0",
+  "messages": [{"role": "user", "content": "Explain gravity in 2 sentences"}],
+  "stream": true
+}'</div>
+
+        <h4 style="margin-top: 1.5rem;">OpenAI Python SDK</h4>
+        <div class="code-block">from openai import OpenAI
+
+client = OpenAI(base_url="http://localhost:11211/v1", api_key="not-needed")
+response = client.chat.completions.create(
+    model="TinyLlama/TinyLlama-1.1B-Chat-v1.0",
+    messages=[{"role": "user", "content": "Hello!"}]
+)
+print(response.choices[0].message.content)</div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    let activePullController = null;
+    let activePullModelName = null;
+
+    document.addEventListener('DOMContentLoaded', () => {
+      const chatInput = document.getElementById('chat-input');
+      if (chatInput) {
+        chatInput.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            sendMessage();
+          }
+        });
+      }
+    });
+
+
+    function switchTab(name) {
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('active');
+        if (btn.getAttribute('onclick') && btn.getAttribute('onclick').includes(`'${name}'`)) {
+          btn.classList.add('active');
+        }
+      });
+      document.querySelectorAll('.view-panel').forEach(panel => panel.classList.remove('active'));
+      
+      const targetPanel = document.getElementById('tab-' + name);
+      if (targetPanel) {
+        targetPanel.classList.add('active');
+      }
+
+      if (name === 'models') {
+        // Re-stagger active download thread LED blinks so returning to the download tab never synchronizes animations
+        const activeDots = document.querySelectorAll('#led-dot-matrix .led-dot.active');
+        activeDots.forEach((dot, idx) => {
+          const delay = ((idx * 0.173 + Math.random() * 0.15 + 0.05) % 0.75).toFixed(2);
+          const duration = (0.48 + ((idx * 0.13) % 0.38)).toFixed(2);
+          dot.style.animationDelay = `${delay}s`;
+          dot.style.animationDuration = `${duration}s`;
+        });
+      }
+
+      if (name === 'settings') {
+        loadConfig();
+      }
+    }
+
+
+    async function unloadActiveModel() {
+      try {
+        // Reset model dropdown to default "-- Select a Model --" immediately
+        const select = document.getElementById('chat-model-select');
+        if (select) {
+          select.value = '';
+        }
+        currentModelData = null;
+        updateRamControlsState('');
+
+        const statModel = document.getElementById('stat-model');
+        if (statModel) {
+          statModel.innerHTML = formatModelTileHTML('', 'var(--text-muted)');
+        }
+
+        const res = await fetch('/api/unload', { method: 'POST' });
+        const data = await res.json();
+        const msgContainer = document.getElementById('chat-messages');
+        const systemMsg = document.createElement('div');
+        systemMsg.className = 'msg assistant';
+        if (data.unloaded) {
+          systemMsg.innerText = `🧹 Model '${data.unloaded}' unloaded from RAM successfully.`;
+        } else {
+          systemMsg.innerText = `ℹ️ ${data.message || 'No model is currently loaded in RAM.'}`;
+        }
+        if (msgContainer) {
+          msgContainer.appendChild(systemMsg);
+          msgContainer.scrollTop = msgContainer.scrollHeight;
+        }
+
+        const boxesContainer = document.getElementById('layer-boxes');
+        if (boxesContainer) boxesContainer.innerHTML = '<div class="layer-box">Ready</div>';
+
+        updateStats();
+      } catch (e) {
+        console.error("Unload failed", e);
+      }
+    }
+
+    async function loadConfig() {
+      try {
+        const res = await fetch('/api/config');
+        const data = await res.json();
+        if (data.models_dir) {
+          document.getElementById('settings-models-dir').value = data.models_dir;
+        }
+        if (data.offload_dir) {
+          document.getElementById('settings-offload-dir').value = data.offload_dir;
+        }
+        if (data.device) {
+          document.getElementById('settings-device').innerText = `⚡ ${data.device.toUpperCase()}`;
+        }
+        if (data.config_path) {
+          document.getElementById('settings-config-path').innerText = data.config_path;
+        }
+
+        const tokenInput = document.getElementById('settings-hf-token');
+        const btnClearToken = document.getElementById('btn-clear-hf-token');
+        if (data.hf_token_set) {
+          tokenInput.placeholder = data.hf_token_masked || "Token Active";
+          btnClearToken.style.display = 'inline-block';
+        } else {
+          tokenInput.placeholder = "hf_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx";
+          btnClearToken.style.display = 'none';
+        }
+      } catch (e) {
+        console.error("Config fetch error", e);
+      }
+    }
+
+    async function saveHFToken() {
+      const token = document.getElementById('settings-hf-token').value.trim();
+      const status = document.getElementById('hf-token-status');
+      if (!token) {
+        status.style.color = 'var(--danger)';
+        status.innerText = 'Token cannot be empty.';
+        return;
+      }
+      try {
+        const res = await fetch('/api/config', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ hf_token: token })
+        });
+        const data = await res.json();
+        if (data.status === 'success') {
+          status.style.color = 'var(--success)';
+          status.innerText = '✅ HF Access Token configured!';
+          document.getElementById('settings-hf-token').value = '';
+          loadConfig();
+          setTimeout(() => status.innerText = '', 3000);
+        }
+      } catch (e) {
+        status.style.color = 'var(--danger)';
+        status.innerText = '❌ Failed saving token: ' + e.message;
+      }
+    }
+
+    async function clearHFToken() {
+      const status = document.getElementById('hf-token-status');
+      try {
+        const res = await fetch('/api/config', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ hf_token: "" })
+        });
+        const data = await res.json();
+        if (data.status === 'success') {
+          status.style.color = 'var(--warning)';
+          status.innerText = '⚠️ HF Access Token cleared.';
+          document.getElementById('settings-hf-token').value = '';
+          loadConfig();
+          setTimeout(() => status.innerText = '', 3000);
+        }
+      } catch (e) {
+        status.style.color = 'var(--danger)';
+        status.innerText = '❌ Failed clearing token: ' + e.message;
+      }
+    }
+
+    async function saveSettings() {
+      const dir = document.getElementById('settings-models-dir').value.trim();
+      if (!dir) {
+        alert("Please enter a valid directory path.");
+        return;
+      }
+
+      const status = document.getElementById('settings-status');
+      try {
+        const res = await fetch('/api/config', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ models_dir: dir })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          status.innerText = `✅ Model storage path updated to: ${data.models_dir}`;
+          loadModels();
+        } else {
+          status.style.color = 'var(--danger)';
+          status.innerText = `❌ ${data.detail || 'Failed to update directory'}`;
+        }
+      } catch (e) {
+        status.style.color = 'var(--danger)';
+        status.innerText = '❌ Failed saving directory: ' + e.message;
+      }
+    }
+
+    async function saveOffloadDir() {
+      const dir = document.getElementById('settings-offload-dir').value.trim();
+      if (!dir) {
+        alert("Please enter a valid offload directory path.");
+        return;
+      }
+
+      const status = document.getElementById('offload-dir-status');
+      try {
+        const res = await fetch('/api/config', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ offload_dir: dir })
+        });
+        const data = await res.json();
+        if (res.ok && data.offload_dir) {
+          status.style.color = 'var(--success)';
+          status.innerText = `✅ Offload cache path updated to: ${data.offload_dir}`;
+          setTimeout(() => status.innerText = '', 4000);
+        } else {
+          status.style.color = 'var(--danger)';
+          status.innerText = `❌ ${data.detail || 'Failed to update offload directory'}`;
+        }
+      } catch (e) {
+        status.style.color = 'var(--danger)';
+        status.innerText = '❌ Failed saving offload directory: ' + e.message;
+      }
+    }
+
+    function formatModelTileHTML(modelName, color, prefix = "") {
+      if (!modelName) return `<span style="color: var(--text-muted); font-size: 1.4rem;">None</span>`;
+      const fullText = prefix + modelName;
+      const len = fullText.length;
+      const fontSize = len > 40 ? '0.78rem' : len > 26 ? '0.92rem' : len > 15 ? '1.15rem' : '1.4rem';
+      return `<span style="color: ${color}; font-weight: bold; font-size: ${fontSize}; word-break: break-all; overflow-wrap: anywhere; line-height: 1.25;">${fullText}</span>`;
+    }
+
+    async function updateStats() {
+      try {
+        const res = await fetch('/api/ps');
+        const data = await res.json();
+        
+        const statModelEl = document.getElementById('stat-model');
+        const selectEl = document.getElementById('chat-model-select');
+        const userSelectedModel = selectEl ? selectEl.value : '';
+
+        if (statModelEl) {
+          if (userSelectedModel && data.active_model && data.active_model === userSelectedModel) {
+            statModelEl.innerHTML = formatModelTileHTML(data.active_model, 'var(--accent-cyan)');
+          } else if (userSelectedModel && statModelEl.innerHTML.includes('Loading')) {
+            // Keep loading status text while loading in progress for user selected model
+          } else {
+            statModelEl.innerHTML = formatModelTileHTML('', 'var(--text-muted)');
+          }
+        }
+        
+        updateRamControlsState(userSelectedModel || data.active_model);
+        
+        const modelRamGb = (data.model_ram_gb || 0).toFixed(2);
+        const engineRamGb = (data.engine_ram_gb || 0).toFixed(2);
+        const modelRamEl = document.getElementById('stat-model-ram');
+        const engineRamEl = document.getElementById('stat-engine-ram');
+        if (modelRamEl) {
+          const hasModel = data.active_model && parseFloat(modelRamGb) > 0.01;
+          modelRamEl.innerHTML = `<span style="color: ${hasModel ? 'var(--accent-cyan)' : 'var(--text-muted)'};">${modelRamGb}</span> <small>GB</small>`;
+        }
+        if (engineRamEl) {
+          engineRamEl.innerHTML = `${engineRamGb} <small>GB</small>`;
+        }
+
+        const availGb = data.available_ram_gb ? data.available_ram_gb.toFixed(1) : '0.0';
+        const totalGb = data.total_ram_gb ? data.total_ram_gb.toFixed(1) : '0.0';
+        document.getElementById('stat-sysram').innerHTML = `${availGb} / ${totalGb} <small>GB</small>`;
+
+        const vramGb = (data.vram_mb / 1024).toFixed(2);
+        document.getElementById('stat-vram').innerHTML = `${vramGb} <small>GB</small>`;
+        
+        let layerText = 'Idle';
+        if (data.current_layer >= 0) {
+          if (data.is_paging) {
+            layerText = `Layer ${data.current_layer} / ${data.total_layers} (Disk ➔ RAM ⚡)`;
+          } else {
+            layerText = `Layer ${data.current_layer} / ${data.total_layers}`;
+          }
+        }
+        document.getElementById('stat-layer').innerText = layerText;
+
+        // Disk Offload Live Activity Update
+        const statOffload = document.getElementById('stat-offload');
+        if (statOffload) {
+          if (data.offload_active) {
+            const statusLabel = data.is_paging ? `Paging Layer ${data.current_layer}` : 'Active';
+            statOffload.innerHTML = `<span style="color: #ffaa00;">${statusLabel}</span> <small>(${data.disk_layers_count || 0} disk)</small>`;
+          } else {
+            statOffload.innerHTML = `<span style="color: var(--accent-cyan);">Inactive</span> <small>(0 disk)</small>`;
+          }
+        }
+
+        const offloadBadge = document.getElementById('offload-badge');
+        if (offloadBadge) {
+          if (data.offload_active) {
+            offloadBadge.style.background = 'rgba(255, 170, 0, 0.2)';
+            offloadBadge.style.color = '#ffaa00';
+            offloadBadge.style.borderColor = 'rgba(255, 170, 0, 0.4)';
+            offloadBadge.innerText = data.is_paging ? '💾 Disk ➔ RAM Paging Active' : '💾 Disk Offloading Active';
+          } else {
+            offloadBadge.style.background = 'rgba(0, 242, 254, 0.1)';
+            offloadBadge.style.color = 'var(--accent-cyan)';
+            offloadBadge.style.borderColor = 'rgba(0, 242, 254, 0.3)';
+            offloadBadge.innerText = '⚡ 100% RAM / GPU Active';
+          }
+        }
+
+        const ramLayersEl = document.getElementById('offload-ram-layers');
+        if (ramLayersEl) ramLayersEl.innerText = `${data.ram_layers_count !== undefined ? data.ram_layers_count : (data.total_layers || 0)} / ${data.total_layers || 0} layers`;
+
+        const diskLayersEl = document.getElementById('offload-disk-layers');
+        if (diskLayersEl) diskLayersEl.innerText = `${data.disk_layers_count || 0} / ${data.total_layers || 0} layers`;
+
+        const diskSizeEl = document.getElementById('offload-disk-size');
+        if (diskSizeEl) diskSizeEl.innerText = `${data.offload_size_gb || '0.0'} GB`;
+
+        // Render visual layer boxes (frameless / no borders)
+        const boxesContainer = document.getElementById('layer-boxes');
+        if (boxesContainer) {
+          if (data.total_layers > 0 && data.active_model) {
+            boxesContainer.innerHTML = '';
+            const baseRam = !data.offload_active ? data.total_layers : (data.base_ram_count !== undefined ? data.base_ram_count : (data.ram_layers_count || data.total_layers));
+            for (let i = 0; i < data.total_layers; i++) {
+              const box = document.createElement('div');
+              const isActiveExecutingLayer = (i === data.current_layer);
+              const isBaseRamLayer = i < baseRam;
+              const isPagedToRam = isActiveExecutingLayer && i >= baseRam;
+
+              let inlineStyle = 'border: none;';
+              if (isPagedToRam) {
+                inlineStyle += ' background: linear-gradient(135deg, #00f2fe, #ffaa00); color: #000; font-weight: bold; box-shadow: 0 0 10px rgba(0,242,254,0.6);';
+              } else if (isBaseRamLayer) {
+                inlineStyle += ' background: rgba(0, 242, 254, 0.15); color: var(--accent-cyan);';
+              } else {
+                inlineStyle += ' background: rgba(255, 170, 0, 0.2); color: #ffaa00;';
+              }
+
+              box.className = `layer-box ${isActiveExecutingLayer ? 'active' : ''}`;
+              box.setAttribute('style', inlineStyle);
+              box.innerText = i;
+              boxesContainer.appendChild(box);
+            }
+          } else {
+            boxesContainer.innerHTML = '<div class="layer-box" style="border: none;">Ready</div>';
+          }
+        }
+      } catch (e) {
+        console.error("Stats update failed", e);
+      }
+    }
+
+    async function loadModels() {
+      try {
+        const res = await fetch('/api/tags');
+        const data = await res.json();
+        
+        const select = document.getElementById('chat-model-select');
+        const list = document.getElementById('models-list');
+        select.innerHTML = '';
+        list.innerHTML = '';
+
+        if (!data.models || data.models.length === 0) {
+          select.innerHTML = '<option value="">No local models. Pull one below!</option>';
+          list.innerHTML = '<p style="color: var(--text-muted)">No models cached yet.</p>';
+          return;
+        }
+
+        // Add default unselected placeholder option
+        const placeholderOpt = document.createElement('option');
+        placeholderOpt.value = '';
+        placeholderOpt.innerText = '-- Select a Model --';
+        select.appendChild(placeholderOpt);
+
+        data.models.forEach(m => {
+          const opt = document.createElement('option');
+          opt.value = m.name;
+          opt.innerText = m.name;
+          select.appendChild(opt);
+
+          const sizeInGb = (m.size / (1024 * 1024 * 1024)).toFixed(2);
+          const sizeInMb = (m.size / (1024 * 1024)).toFixed(1);
+          const sizeDisplay = m.size >= (1024 * 1024 * 1024) ? `${sizeInGb} GB` : `${sizeInMb} MB (${sizeInGb} GB)`;
+
+          const card = document.createElement('div');
+          card.className = 'model-card';
+          card.innerHTML = `
+            <div>
+              <strong>${m.name}</strong>
+              <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem;">
+                Size: <strong style="color: var(--accent-cyan);">${sizeDisplay}</strong> | Format: ${m.details.format}
+              </div>
+            </div>
+            <div style="display: flex; gap: 0.5rem;">
+              <button class="btn-primary" style="padding: 0.4rem 0.8rem; font-size: 0.8rem;" onclick="selectModelForChat('${m.name}')">Use</button>
+              <button class="btn-danger" style="padding: 0.4rem 0.8rem; font-size: 0.8rem;" onclick="deleteModel('${m.name}')">Delete</button>
+            </div>
+          `;
+          list.appendChild(card);
+        });
+
+        // Always default to -- Select a Model -- and start with a 100% clean slate (0.00 GB VRAM/RAM)
+        select.value = '';
+        updateRamControlsState('');
+        fetch('/api/unload', { method: 'POST' }).then(() => updateStats()).catch(() => {});
+
+      } catch (e) {
+
+        console.error("Load models failed", e);
+      }
+    }
+
+    let currentModelData = null;
+
+    function updateRamControlsState(modelName) {
+      const select = document.getElementById('chat-model-select');
+      const targetModel = modelName !== undefined ? modelName : (select ? select.value : '');
+      const isMlx = targetModel && (targetModel.toLowerCase().includes('mlx'));
+      
+      const ramInput = document.getElementById('param-max-ram');
+      const ramBadge = document.getElementById('ram-slider-val');
+      const ramInfo = document.getElementById('ram-speed-preset-info');
+      const ramContainer = document.getElementById('ram-cap-container');
+      const presetBtns = document.querySelectorAll('#ram-preset-buttons button');
+
+      if (isMlx) {
+        if (ramInput) ramInput.disabled = true;
+        if (ramBadge) {
+          ramBadge.innerText = 'Metal VRAM (Native)';
+          ramBadge.style.background = 'rgba(0, 242, 254, 0.2)';
+          ramBadge.style.color = 'var(--accent-cyan)';
+        }
+        if (ramInfo) {
+          ramInfo.innerHTML = '⚡ <b>Apple MLX Native Model:</b> Runs 100% on Metal GPU VRAM without RAM capping constraints.';
+          ramInfo.style.color = 'var(--accent-cyan)';
+        }
+        if (ramContainer) {
+          ramContainer.style.opacity = '0.65';
+        }
+        presetBtns.forEach(btn => {
+          btn.disabled = true;
+          btn.style.cursor = 'not-allowed';
+          btn.style.opacity = '0.4';
+        });
+      } else {
+        if (ramInput) ramInput.disabled = false;
+        if (ramBadge && ramInput) {
+          updateRamCapBadge(ramInput.value);
+        }
+        if (ramContainer) {
+          ramContainer.style.opacity = '1.0';
+        }
+        presetBtns.forEach(btn => {
+          btn.disabled = false;
+          btn.style.cursor = 'pointer';
+          btn.style.opacity = '1.0';
+        });
+      }
+    }
+
+    function updateRamCapBadge(val) {
+      const slider = document.getElementById('param-max-ram');
+      if (slider && slider.disabled) return;
+      const badge = document.getElementById('ram-slider-val');
+      const info = document.getElementById('ram-speed-preset-info');
+      if (!badge || !info) return;
+
+      const ramVal = parseFloat(val);
+      const modelSize = currentModelData ? currentModelData.model_size_gb : 4.0;
+      const minRam = currentModelData ? currentModelData.min_ram_gb : 2.5;
+
+      if (ramVal >= modelSize) {
+        badge.innerText = `${ramVal} GB (🚀 Max Speed)`;
+        badge.style.background = 'linear-gradient(135deg, var(--accent-cyan), #4facfe)';
+        badge.style.color = '#000';
+        info.innerText = `🔥 100% Metal GPU Accelerated (Blazing fast generation)`;
+        info.style.color = 'var(--accent-cyan)';
+      } else if (ramVal <= minRam + 0.5) {
+        badge.innerText = `${ramVal} GB (🐢 Min RAM)`;
+        badge.style.background = 'rgba(255, 170, 0, 0.3)';
+        badge.style.color = '#ffaa00';
+        info.innerText = `🐢 Disk Offloaded (Saves RAM, slower output speed)`;
+        info.style.color = '#ffaa00';
+      } else {
+        badge.innerText = `${ramVal} GB (⚡ High Speed)`;
+        badge.style.background = 'rgba(157, 78, 221, 0.3)';
+        badge.style.color = '#d8b4fe';
+        info.innerText = `⚡ Partial GPU Acceleration (Fast output with RAM safety)`;
+        info.style.color = '#d8b4fe';
+      }
+    }
+
+    async function onRamCapChanged(val) {
+      const slider = document.getElementById('param-max-ram');
+      if (slider && slider.disabled) return;
+      updateRamCapBadge(val);
+      const select = document.getElementById('chat-model-select');
+      const modelName = select ? select.value : '';
+      if (modelName) {
+        await preloadCurrentModel(false);
+      }
+    }
+
+    function setRamPreset(type) {
+      const slider = document.getElementById('param-max-ram');
+      if (!slider || slider.disabled) return;
+      const minRam = currentModelData ? currentModelData.min_ram_gb : 2.5;
+      const recRam = currentModelData ? currentModelData.recommended_ram_gb : 8.0;
+      const sizeRam = currentModelData ? Math.ceil(currentModelData.model_size_gb + 1) : 16.0;
+
+      if (type === 'min') {
+        slider.value = minRam;
+      } else if (type === 'balanced') {
+        slider.value = recRam;
+      } else if (type === 'max') {
+        slider.value = sizeRam;
+      }
+      onRamCapChanged(slider.value);
+    }
+
+    let isGenerating = false;
+    let chatAbortController = null;
+    let chatConversationHistory = [];
+
+    async function preloadCurrentModel(showGreeting = true) {
+      const select = document.getElementById('chat-model-select');
+      const modelName = select ? select.value : '';
+      if (!modelName) return;
+      updateRamControlsState(modelName);
+
+      const statModel = document.getElementById('stat-model');
+      if (statModel) {
+        statModel.innerHTML = formatModelTileHTML(modelName, '#ffaa00', '⌛ Loading ');
+      }
+
+      const messagesContainer = document.getElementById('chat-messages');
+      if (showGreeting && messagesContainer) {
+        let greetingEl = document.getElementById('initial-model-greeting');
+        if (!greetingEl) {
+          greetingEl = document.createElement('div');
+          greetingEl.id = 'initial-model-greeting';
+          greetingEl.className = 'msg assistant';
+          messagesContainer.appendChild(greetingEl);
+        }
+        greetingEl.innerText = `⌛ Preloading model '${modelName}' into GPU/RAM memory...`;
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+      }
+
+      try {
+        const slider = document.getElementById('param-max-ram');
+        const ramVal = parseFloat(slider ? slider.value : 8);
+        const res = await fetch('/api/load', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ model: modelName, max_ram_gb: ramVal })
+        });
+        if (res.ok) {
+          const currentSelect = document.getElementById('chat-model-select');
+          if (!currentSelect || currentSelect.value !== modelName) {
+            // User unselected or switched model while preloading was in flight
+            return;
+          }
+          const greetingEl = document.getElementById('initial-model-greeting');
+          if (greetingEl) {
+            greetingEl.innerText = `👋 Hello! I am ${modelName}. I'm loaded in memory and ready for your prompts! How can I help you today? 😊`;
+          }
+          await updateStats();
+        } else {
+          if (statModel) {
+            statModel.innerHTML = `<span style="color: var(--danger);">❌ Load Failed</span>`;
+          }
+        }
+      } catch (e) {
+        console.error("Preload request failed", e);
+        if (statModel) {
+          statModel.innerHTML = `<span style="color: var(--danger);">❌ Load Failed</span>`;
+        }
+      }
+    }
+
+    async function onModelSelectChange(modelName, triggerPreload = true) {
+      if (!modelName) return;
+      updateRamControlsState(modelName);
+      try {
+        const res = await fetch(`/api/ram_requirements?model=${encodeURIComponent(modelName)}`);
+        if (res.ok) {
+          const data = await res.json();
+          currentModelData = data;
+          const slider = document.getElementById('param-max-ram');
+          const autoVal = data.recommended_ram_gb || data.min_ram_gb;
+          if (slider) {
+            slider.min = Math.floor(data.min_ram_gb);
+            slider.value = autoVal;
+            updateRamCapBadge(autoVal);
+          }
+          if (triggerPreload) {
+            preloadCurrentModel(true);
+          }
+        }
+      } catch (e) {
+        console.error("Auto RAM requirements fetch failed", e);
+      }
+    }
+
+    function selectModelForChat(name) {
+      const select = document.getElementById('chat-model-select');
+      if (select) select.value = name;
+      onModelSelectChange(name, true);
+      switchTab('playground');
+    }
+
+    async function deleteModel(name) {
+      if (!confirm(`Are you sure you want to delete model '${name}' completely from disk?`)) return;
+      try {
+        const res = await fetch('/api/delete', {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: name })
+        });
+        if (res.ok) {
+          loadModels();
+          updateStats();
+        } else {
+          const data = await res.json();
+          alert(`Failed to delete model: ${data.detail || 'Unknown error'}`);
+        }
+      } catch (e) {
+        alert(`Error deleting model: ${e.message}`);
+      }
+    }
+
+    let userSystemLocation = "San Francisco, CA, US";
+
+    function setLocationInput(loc) {
+      userSystemLocation = loc;
+      const input = document.getElementById('param-location-input');
+      if (input) input.value = loc;
+    }
+
+    function detectLocation() {
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          async (pos) => {
+            const lat = pos.coords.latitude.toFixed(4);
+            const lon = pos.coords.longitude.toFixed(4);
+            setLocationInput(`Lat: ${lat}, Lon: ${lon}`);
+          },
+          () => setLocationInput("San Francisco, CA, US"),
+          { timeout: 3000 }
+        );
+      } else {
+        setLocationInput("San Francisco, CA, US");
+      }
+    }
+    detectLocation();
+
+    function parseMarkdown(text) {
+      if (!text) return '';
+      if (window.marked && typeof window.marked.parse === 'function') {
+        try {
+          return window.marked.parse(text, { gfm: true, breaks: true });
+        } catch (e) {
+          console.error("Marked parse error:", e);
+        }
+      }
+      return text
+        .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+        .replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>')
+        .replace(/`([^`]+)`/g, '<code>$1</code>')
+        .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+        .replace(/\*([^*]+)\*/g, '<em>$1</em>')
+        .replace(/\n/g, '<br>');
+    }
+
+    function formatAssistantMarkdown(container, text) {
+      if (!container) return;
+      container.innerHTML = parseMarkdown(text);
+      
+      container.querySelectorAll('pre').forEach(pre => {
+        if (pre.querySelector('.code-block-header')) return;
+        const code = pre.querySelector('code');
+        const langMatch = code ? (code.className || '').match(/language-(\w+)/) : null;
+        const lang = langMatch ? langMatch[1] : 'Code';
+        
+        const header = document.createElement('div');
+        header.className = 'code-block-header';
+        header.innerHTML = `
+          <span>${lang}</span>
+          <button type="button" class="copy-code-btn" onclick="copyCodeBlock(this)">Copy</button>
+        `;
+        pre.insertBefore(header, pre.firstChild);
+      });
+    }
+
+    function copyCodeBlock(btn) {
+      const pre = btn.closest('pre');
+      const code = pre ? pre.querySelector('code') : null;
+      const text = code ? code.innerText : (pre ? pre.innerText : '');
+      navigator.clipboard.writeText(text).then(() => {
+        btn.innerText = 'Copied!';
+        setTimeout(() => { btn.innerText = 'Copy'; }, 2000);
+      }).catch(() => {
+        btn.innerText = 'Failed';
+      });
+    }
+
+    function clearChat() {
+      chatConversationHistory = [];
+      const messagesContainer = document.getElementById('chat-messages');
+      if (messagesContainer) {
+        messagesContainer.innerHTML = '';
+        const welcomeMsg = document.createElement('div');
+        welcomeMsg.className = 'msg assistant';
+        formatAssistantMarkdown(welcomeMsg, "👋 Hello! I am **AirOllama**. Select a model and send a message to start streaming layer-by-layer inference.");
+        messagesContainer.appendChild(welcomeMsg);
+      }
+    }
+
+    function stopGeneration() {
+      if (chatAbortController) {
+        chatAbortController.abort();
+        chatAbortController = null;
+      }
+      fetch('/api/chat/cancel', { method: 'POST' }).catch(() => {});
+      fetch('/api/generate/cancel', { method: 'POST' }).catch(() => {});
+      isGenerating = false;
+      const sendBtn = document.getElementById('btn-chat-send');
+      const stopBtn = document.getElementById('btn-chat-stop');
+      if (sendBtn) sendBtn.style.display = 'inline-block';
+      if (stopBtn) stopBtn.style.display = 'none';
+    }
+
+    async function handleChatSubmit(event) {
+      if (event) event.preventDefault();
+      if (isGenerating) return;
+
+      const input = document.getElementById('chat-input');
+      const select = document.getElementById('chat-model-select');
+      let model = select ? select.value : '';
+
+      const text = input ? input.value.trim() : '';
+
+      if (!model) {
+        alert("Please select a model from the dropdown first.");
+        return;
+      }
+
+      if (!text) return;
+
+      // Reset input immediately
+      input.value = '';
+
+      // Update State & UI Buttons
+      isGenerating = true;
+      const sendBtn = document.getElementById('btn-chat-send');
+      const stopBtn = document.getElementById('btn-chat-stop');
+      if (sendBtn) sendBtn.style.display = 'none';
+      if (stopBtn) stopBtn.style.display = 'inline-block';
+
+      const messagesContainer = document.getElementById('chat-messages');
+
+      // Append User Message
+      const userMsg = document.createElement('div');
+      userMsg.className = 'msg user';
+      userMsg.innerText = text;
+      messagesContainer.appendChild(userMsg);
+
+      const enableWebSearch = document.getElementById('param-websearch').checked;
+      const enableLocation = document.getElementById('param-location-toggle').checked;
+      const customLocation = (document.getElementById('param-location-input').value || userSystemLocation).trim();
+
+      // Append Assistant Message Placeholder
+      const assistantMsg = document.createElement('div');
+      assistantMsg.className = 'msg assistant';
+      formatAssistantMarkdown(assistantMsg, enableWebSearch ? 'Thinking (searching web)...' : 'Thinking...');
+      messagesContainer.appendChild(assistantMsg);
+      messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+      chatConversationHistory.push({ role: 'user', content: text });
+
+      const systemPrompt = (document.getElementById('param-system').value || '').trim();
+      const payloadMessages = [];
+      if (systemPrompt) {
+        payloadMessages.push({ role: 'system', content: systemPrompt });
+      }
+      payloadMessages.push(...chatConversationHistory);
+
+      chatAbortController = new AbortController();
+      let fullText = '';
+
+      try {
+        const res = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          signal: chatAbortController.signal,
+          body: JSON.stringify({
+            model: model,
+            messages: payloadMessages,
+            stream: true,
+            web_search: enableWebSearch,
+            location: enableLocation ? customLocation : null,
+            options: {
+              num_predict: parseInt(document.getElementById('param-tokens').value || 2048),
+              temperature: parseFloat(document.getElementById('param-temp').value || 0.7),
+              max_ram_gb: parseFloat(document.getElementById('param-max-ram').value || 8)
+            }
+          })
+        });
+
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({ detail: res.statusText }));
+          assistantMsg.innerText = `❌ Error (${res.status}): ${errData.detail || 'Failed to generate'}`;
+          return;
+        }
+
+        // Clear Thinking... placeholder as soon as stream opens
+        assistantMsg.innerText = '';
+
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+        let tokenCount = 0;
+        let startTime = null;
+        const tpsDisplay = document.getElementById('tps-display');
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop();
+
+          for (const line of lines) {
+            const trimmed = line.trim();
+            if (!trimmed) continue;
+
+            try {
+              const data = JSON.parse(trimmed);
+              let chunkText = "";
+              if (data.message && data.message.content !== undefined) {
+                chunkText = data.message.content;
+              } else if (data.response !== undefined) {
+                chunkText = data.response;
+              }
+
+              if (chunkText) {
+                if (!startTime) startTime = performance.now();
+                tokenCount++;
+                const elapsedSeconds = (performance.now() - startTime) / 1000;
+                if (elapsedSeconds > 0 && tpsDisplay) {
+                  tpsDisplay.innerText = `${(tokenCount / elapsedSeconds).toFixed(1)} tok/s`;
+                }
+              }
+
+              if (data.eval_count && data.eval_duration && tpsDisplay) {
+                const finalTps = (data.eval_count / (data.eval_duration / 1e9)).toFixed(1);
+                tpsDisplay.innerText = `${finalTps} tok/s`;
+              }
+
+              if (data.error) {
+                chunkText += ` [Error: ${data.error}]`;
+              }
+
+              for (const tag of ["<|im_end|>", "<|end_of_text|>", "<end_of_turn>", "<eos>", "<|eot_id|>"]) {
+                chunkText = chunkText.replaceAll(tag, "");
+              }
+
+              fullText += chunkText;
+              formatAssistantMarkdown(assistantMsg, fullText);
+              messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            } catch (e) {
+              console.warn("[AirOllama] Non-JSON stream chunk:", trimmed);
+            }
+          }
+        }
+
+        if (fullText.trim()) {
+          chatConversationHistory.push({ role: 'assistant', content: fullText });
+        }
+      } catch (e) {
+        if (e.name === 'AbortError') {
+          assistantMsg.innerText += ' [🛑 Generation cancelled by user]';
+        } else {
+          assistantMsg.innerText = '❌ Error streaming response: ' + e.message;
+        }
+      } finally {
+        isGenerating = false;
+        if (sendBtn) sendBtn.style.display = 'inline-block';
+        if (stopBtn) stopBtn.style.display = 'none';
+      }
+    }
+
+
+    async function pullModel() {
+      const nameInput = document.getElementById('pull-model-input');
+      const name = nameInput.value.trim();
+      if (!name) {
+        alert("Please enter a model tag to pull (e.g. llama3.2 or qwen2.5:0.5b or tinyllama)");
+        return;
+      }
+
+      const sourceSelect = document.getElementById('pull-source-select');
+      const source = sourceSelect ? sourceSelect.value : 'auto';
+
+      activePullModelName = name;
+      activePullController = new AbortController();
+
+      const btnPull = document.getElementById('btn-pull');
+      const btnCancel = document.getElementById('btn-cancel-pull');
+      const status = document.getElementById('pull-status');
+      const globalContainer = document.getElementById('global-download-container');
+      const globalFill = document.getElementById('global-progress-fill');
+      const globalStats = document.getElementById('global-download-stats');
+      const speedValue = document.getElementById('download-speed-value');
+      const ledActiveCount = document.getElementById('led-active-count');
+      const ledCompletedCount = document.getElementById('led-completed-count');
+      const ledTotalCount = document.getElementById('led-total-count');
+      const ledDotMatrix = document.getElementById('led-dot-matrix');
+
+      let threadMap = {};
+      let lastSpeedTime = performance.now();
+      let lastSpeedBytes = 0;
+
+      btnPull.disabled = true;
+      btnCancel.style.display = 'inline-block';
+      status.style.color = 'var(--accent-cyan)';
+      status.innerText = `⌛ Connecting to ${source === 'ollama' ? 'Ollama Registry' : source === 'huggingface' ? 'Hugging Face Hub' : 'auto source'}...`;
+      
+      globalContainer.style.display = 'block';
+      globalFill.style.width = '0%';
+      globalStats.innerText = '0.00 GB / 0.00 GB (0%)';
+      speedValue.innerText = '0.0 MB/s';
+      ledActiveCount.innerText = '0';
+      ledCompletedCount.innerText = '0';
+      ledTotalCount.innerText = 'Total Worker Streams: 0';
+      ledDotMatrix.innerHTML = '';
+
+      try {
+        const res = await fetch('/api/pull', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: name, source: source, stream: true }),
+          signal: activePullController.signal
+        });
+
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+        let hasError = false;
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop();
+
+          for (const line of lines) {
+            const trimmed = line.trim();
+            if (!trimmed) continue;
+
+            try {
+              const data = JSON.parse(trimmed);
+              if (data.status) {
+                status.style.color = 'var(--accent-cyan)';
+                status.innerText = `📦 ${data.status}`;
+              }
+
+              // Update LED Panel & Overall Progress Tracker
+              if (data.layer_idx !== undefined && data.filename) {
+                threadMap[data.layer_idx] = {
+                  downloaded_mb: data.downloaded_mb || 0,
+                  size_mb: data.size_mb || 0,
+                  percent: data.percent || 0
+                };
+
+                let totalDlMb = 0;
+                let totalSzMb = 0;
+                let activeCount = 0;
+                let completedCount = 0;
+                let totalThreads = Object.keys(threadMap).length;
+
+                for (const k in threadMap) {
+                  const t = threadMap[k];
+                  totalDlMb += t.downloaded_mb;
+                  totalSzMb += t.size_mb;
+                  if (t.percent >= 100) {
+                    completedCount++;
+                  } else {
+                    activeCount++;
+                  }
+                }
+
+                // Overall Progress Bar & Stats
+                if (totalSzMb > 0) {
+                  let overallPct = Math.min(100, Math.round((totalDlMb / totalSzMb) * 100 * 10) / 10);
+                  // Fix: when all threads completed, force 100% (floating-point rounding of many values can cause 99.6%)
+                  if (completedCount === totalThreads && totalThreads > 0) {
+                    overallPct = 100;
+                  }
+                  const dlGb = (totalDlMb / 1024).toFixed(2);
+                  const szGb = (totalSzMb / 1024).toFixed(2);
+                  globalFill.style.width = `${overallPct}%`;
+                  globalStats.innerText = `${dlGb} GB / ${szGb} GB (${overallPct}%)`;
+                }
+
+                // Real-Time Speed Monitor Calculation
+                const now = performance.now();
+                const currentBytes = totalDlMb * 1024 * 1024;
+                const timeDeltaSec = (now - lastSpeedTime) / 1000;
+                if (timeDeltaSec >= 0.4) {
+                  const bytesDelta = currentBytes - lastSpeedBytes;
+                  if (bytesDelta >= 0 && lastSpeedBytes > 0) {
+                    const speedBps = bytesDelta / timeDeltaSec;
+                    if (speedBps >= 1024 * 1024 * 1024) {
+                      speedValue.innerText = `${(speedBps / (1024**3)).toFixed(2)} GB/s`;
+                    } else {
+                      speedValue.innerText = `${(speedBps / (1024**2)).toFixed(1)} MB/s`;
+                    }
+                  }
+                  lastSpeedTime = now;
+                  lastSpeedBytes = currentBytes;
+                }
+
+                // LED Panel Counters
+                ledActiveCount.innerText = activeCount;
+                ledCompletedCount.innerText = completedCount;
+                ledTotalCount.innerText = `Total Worker Streams: ${totalThreads}`;
+
+                // Dynamic LED Dot Matrix Grid
+                let dot = document.getElementById(`led-dot-${data.layer_idx}`);
+                if (!dot) {
+                  dot = document.createElement('div');
+                  dot.id = `led-dot-${data.layer_idx}`;
+                  dot.className = 'led-dot';
+                  ledDotMatrix.appendChild(dot);
+                }
+                const pct = data.percent || 0;
+                dot.title = `Thread ${data.layer_idx + 1}: ${pct}%`;
+                if (pct >= 100) {
+                  dot.className = 'led-dot completed';
+                  dot.style.animationDelay = '';
+                  dot.style.animationDuration = '';
+                } else {
+                  dot.className = 'led-dot active';
+                  if (!dot.dataset.staggered) {
+                    const idx = data.layer_idx || 0;
+                    const delay = ((idx * 0.173 + Math.random() * 0.15 + 0.05) % 0.75).toFixed(2);
+                    const duration = (0.48 + ((idx * 0.13) % 0.38)).toFixed(2);
+                    dot.style.animationDelay = `${delay}s`;
+                    dot.style.animationDuration = `${duration}s`;
+                    dot.dataset.staggered = "true";
+                  }
+                }
+              }
+
+              if (data.error) {
+                hasError = true;
+                status.style.color = 'var(--danger)';
+                status.innerText = `❌ Error: ${data.error}`;
+              }
+            } catch (e) {}
+          }
+        }
+
+        if (!hasError) {
+          globalFill.style.width = '100%';
+          globalStats.innerText = '100.0% Complete';
+          speedValue.innerText = '0.0 MB/s';
+          status.style.color = 'var(--success)';
+          status.innerText = '✅ Multi-threaded model download complete! Available in playground.';
+          nameInput.value = '';
+          loadModels();
+        }
+
+      } catch (e) {
+        if (e.name === 'AbortError') {
+          status.style.color = 'var(--warning)';
+          status.innerText = '⚠️ Download pull cancelled by user.';
+          resetDownloadUI();
+        } else {
+          status.style.color = 'var(--danger)';
+          status.innerText = '❌ Download failed: ' + e.message;
+        }
+      }
+ finally {
+        btnPull.disabled = false;
+        btnCancel.style.display = 'none';
+        activePullController = null;
+        activePullModelName = null;
+      }
+    }
+
+    function resetDownloadUI() {
+      const globalContainer = document.getElementById('global-download-container');
+      const globalFill = document.getElementById('global-progress-fill');
+      const globalStats = document.getElementById('global-download-stats');
+      const speedValue = document.getElementById('download-speed-value');
+      const ledActiveCount = document.getElementById('led-active-count');
+      const ledCompletedCount = document.getElementById('led-completed-count');
+      const ledTotalCount = document.getElementById('led-total-count');
+      const ledDotMatrix = document.getElementById('led-dot-matrix');
+
+      if (globalContainer) globalContainer.style.display = 'none';
+      if (globalFill) globalFill.style.width = '0%';
+      if (globalStats) globalStats.innerText = '0.00 GB / 0.00 GB (0%)';
+      if (speedValue) speedValue.innerText = '0.0 MB/s';
+      if (ledActiveCount) ledActiveCount.innerText = '0';
+      if (ledCompletedCount) ledCompletedCount.innerText = '0';
+      if (ledTotalCount) ledTotalCount.innerText = 'Total Worker Streams: 0';
+      if (ledDotMatrix) ledDotMatrix.innerHTML = '';
+    }
+
+    async function cancelPull() {
+      if (!activePullModelName) return;
+
+      const modelToCancel = activePullModelName;
+      const status = document.getElementById('pull-status');
+      const btnPull = document.getElementById('btn-pull');
+      const btnCancel = document.getElementById('btn-cancel-pull');
+
+      status.style.color = 'var(--warning)';
+      status.innerText = '🛑 Cancelling download and purging partial files...';
+
+      try {
+        await fetch('/api/pull/cancel', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: modelToCancel })
+        });
+
+        if (activePullController) {
+          activePullController.abort();
+        }
+      } catch (e) {
+        console.error("Cancel pull error", e);
+      } finally {
+        resetDownloadUI();
+        btnPull.disabled = false;
+        btnCancel.style.display = 'none';
+        status.style.color = 'var(--warning)';
+        status.innerText = '⚠️ Download cancelled and partial files deleted.';
+
+        setTimeout(() => {
+          if (status.innerText.includes('cancelled')) {
+            status.innerText = '';
+          }
+        }, 3000);
+
+        activePullController = null;
+        activePullModelName = null;
+        loadModels();
+      }
+    }
+
+
+
+
+    setInterval(updateStats, 1000);
+    loadModels();
+    loadConfig();
+  </script>
+</body>
+</html>

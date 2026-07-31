@@ -1,0 +1,27 @@
+# Byte-compiled / optimized files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual Environment
+venv/
+env/
+ENV/
+
+# AirOllama Model and Offload Cache directories
+models
+.offload/
+.custom_offload/
+.hf_cache/
+
+# User Local Configuration (contains private API Tokens & local paths)
+config.json
+
+# macOS metadata & IDEs
+.DS_Store
+.idea/
+.vscode/
+
+# Logs & temporary files
+*.log
+temp_*

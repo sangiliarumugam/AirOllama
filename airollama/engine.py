@@ -551,10 +551,35 @@ class AirEngine:
         self.current_model_name = model_name
         self.current_ram_cap = max_ram_gb
 
+        # Determine actual transformer layers from loaded model architecture
+        transformer_layers = None
+        if hasattr(self.model, "model") and hasattr(self.model.model, "layers"):
+            transformer_layers = self.model.model.layers
+        elif hasattr(self.model, "transformer") and hasattr(self.model.transformer, "h"):
+            transformer_layers = self.model.transformer.h
+
+        if transformer_layers is not None:
+            actual_num_layers = len(transformer_layers)
+        else:
+            actual_num_layers = getattr(self.config, "num_hidden_layers", getattr(self.config, "n_layer", num_layers))
+
+        self.memory_tracker.total_layers = actual_num_layers
+
         dmap = getattr(self.model, "hf_device_map", {})
         if dmap:
-            disk_c = sum(1 for d in dmap.values() if d == "disk")
-            ram_c = sum(1 for d in dmap.values() if d in ["cpu", "mps", 0, "cuda:0"])
+            disk_c = 0
+            ram_c = 0
+            if transformer_layers is not None:
+                for idx in range(actual_num_layers):
+                    dev = dmap.get(f"model.layers.{idx}", dmap.get(f"transformer.h.{idx}", dmap.get(f"layers.{idx}", "cpu")))
+                    if str(dev).lower() == "disk":
+                        disk_c += 1
+                    else:
+                        ram_c += 1
+            else:
+                disk_c = sum(1 for k, d in dmap.items() if ("layer" in k.lower() or ".h." in k.lower()) and str(d).lower() == "disk")
+                ram_c = max(0, actual_num_layers - disk_c)
+
             self.memory_tracker.offload_active = (disk_c > 0)
             self.memory_tracker.disk_layers_count = disk_c
             self.memory_tracker.ram_layers_count = ram_c
@@ -562,8 +587,8 @@ class AirEngine:
         else:
             self.memory_tracker.offload_active = False
             self.memory_tracker.disk_layers_count = 0
-            self.memory_tracker.ram_layers_count = num_layers
-            self.memory_tracker.base_ram_count = num_layers
+            self.memory_tracker.ram_layers_count = actual_num_layers
+            self.memory_tracker.base_ram_count = actual_num_layers
 
         logger.info(f"Successfully loaded model {model_name} ({self.memory_tracker.total_layers} layers) active on GPU ({dev_str}) [RAM Cap: {max_ram_gb} GB, Offload: {self.memory_tracker.offload_active}]")
         return True

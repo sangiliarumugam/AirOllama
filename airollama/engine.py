@@ -22,6 +22,48 @@ except ImportError:
 logger = logging.getLogger("AirOllama.Engine")
 logging.basicConfig(level=logging.INFO)
 
+import concurrent.futures
+
+class AsyncLayerPrefetcher:
+    """
+    Asynchronous layer prefetcher for Accelerate disk-offloaded models (Solution 4 & 5).
+    Pre-loads OS kernel page cache for Layer N+1 / N+2 from SSD while Layer N executes on GPU/CPU.
+    """
+    def __init__(self, offload_dir: str):
+        self.offload_dir = offload_dir
+        self.executor = concurrent.futures.ThreadPoolExecutor(max_workers=2, thread_name_prefix="airollama_prefetch")
+        self.prefetched_layers = set()
+
+    def prefetch_layer(self, layer_idx: int):
+        """Asynchronously pre-read offload files for upcoming layer."""
+        if not self.offload_dir or not os.path.exists(self.offload_dir):
+            return
+        if layer_idx in self.prefetched_layers:
+            return
+        self.prefetched_layers.add(layer_idx)
+        self.executor.submit(self._do_prefetch, layer_idx)
+
+    def _do_prefetch(self, layer_idx: int):
+        try:
+            target_str = f"layers.{layer_idx}"
+            for root, _, files in os.walk(self.offload_dir):
+                for f in files:
+                    if target_str in f:
+                        fp = os.path.join(root, f)
+                        if os.path.exists(fp):
+                            with open(fp, "rb") as fh:
+                                # Warm OS page cache by reading chunks asynchronously into kernel memory
+                                while fh.read(1024 * 1024 * 4):  # 4MB chunks
+                                    pass
+        except Exception:
+            pass
+
+    def shutdown(self):
+        try:
+            self.executor.shutdown(wait=False)
+        except Exception:
+            pass
+
 class LayerMemoryTracker:
     """Utility to track memory and current layer status during AirLLM inference."""
     def __init__(self):
@@ -402,7 +444,11 @@ class AirEngine:
                 logger.warning(f"Model size ({round(target_size_bytes/(1024**3),1)} GB) exceeds RAM Cap threshold ({cap_gb} GB)! Enabling CPU offloader...")
                 try:
                     if dev_str == "mps":
-                        # Strictly cap active CPU RAM parameters using Accelerate disk offloading
+                        # Maximize PyTorch CPU threading & memory mapping for offloading
+                        try:
+                            torch.set_num_threads(max(4, os.cpu_count() or 4))
+                        except Exception:
+                            pass
                         cpu_mem_limit_gb = max(1.2, round(cap_gb * 0.8, 2))
                         max_mem = {"cpu": f"{cpu_mem_limit_gb}GiB"}
                         self.model = AutoModelForCausalLM.from_pretrained(
@@ -413,7 +459,8 @@ class AirEngine:
                             trust_remote_code=True,
                             device_map="auto",
                             max_memory=max_mem,
-                            offload_folder=offload_dir
+                            offload_folder=offload_dir,
+                            offload_state_dict=True
                         )
                         self.is_cpu_offloaded = True
                         logger.info(f"⚡ Model loaded with Accelerate RAM cap on CPU ({cpu_mem_limit_gb} GB RAM limit) to honor {cap_gb} GB RAM Cap.")
@@ -722,10 +769,16 @@ class AirEngine:
         tokens_generated = 0
         total_layers = self.memory_tracker.total_layers
 
-        # Register forward hook to monitor layer execution during generation
+        # Solution 4 & 5: Asynchronous Layer Prefetcher & OS Page Cache pre-warmer
+        offload_dir = self.get_offload_dir()
+        prefetcher = AsyncLayerPrefetcher(offload_dir) if getattr(self.memory_tracker, "offload_active", False) else None
+
+        # Register forward hook to monitor layer execution and prefetch upcoming offloaded layers
         def create_layer_hook(layer_idx):
             def hook(module, input, output):
                 self.memory_tracker.current_layer = layer_idx
+                if prefetcher:
+                    prefetcher.prefetch_layer(layer_idx + 1)
                 if self.layer_callback:
                     self.layer_callback(layer_idx, total_layers)
             return hook

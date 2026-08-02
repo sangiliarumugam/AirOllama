@@ -1282,8 +1282,12 @@ print(response.choices[0].message.content)</div>
               const isPagedToRam = isActiveExecutingLayer && i >= baseRam;
 
               let inlineStyle = 'border: none;';
-              if (isPagedToRam) {
-                inlineStyle += ' background: linear-gradient(135deg, #00f2fe, #ffaa00); color: #000; font-weight: bold; box-shadow: 0 0 10px rgba(0,242,254,0.6);';
+              if (isActiveExecutingLayer) {
+                if (isPagedToRam) {
+                  inlineStyle += ' background: linear-gradient(135deg, #00f2fe, #ffaa00); color: #000; font-weight: bold; box-shadow: 0 0 16px rgba(0, 242, 254, 0.9); transform: scale(1.15); z-index: 5;';
+                } else {
+                  inlineStyle += ' background: linear-gradient(135deg, #00f2fe, #7928ca); color: #fff; font-weight: bold; box-shadow: 0 0 16px rgba(0, 242, 254, 0.95); transform: scale(1.15); z-index: 5;';
+                }
               } else if (isBaseRamLayer) {
                 inlineStyle += ' background: rgba(0, 242, 254, 0.15); color: var(--accent-cyan);';
               } else {

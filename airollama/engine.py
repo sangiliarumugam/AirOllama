@@ -724,6 +724,8 @@ class AirEngine:
             try:
                 from mlx_lm import stream_generate
                 logger.info(f"⚡ Streaming generation using Apple MLX native engine for prompt len={len(prompt)}...")
+                tot_l = self.memory_tracker.total_layers or 32
+                token_step = 0
                 for response in stream_generate(
                     self.mlx_model,
                     self.mlx_tokenizer,
@@ -732,14 +734,18 @@ class AirEngine:
                 ):
                     if self.stop_requested:
                         break
+                    self.memory_tracker.current_layer = token_step % tot_l
+                    token_step += 1
                     yield {
                         "response": response.text,
                         "done": False,
                         "memory": self.memory_tracker.get_system_memory()
                     }
+                self.memory_tracker.current_layer = -1
                 yield {"response": "", "done": True, "memory": self.memory_tracker.get_system_memory()}
                 return
             except Exception as gen_err:
+                self.memory_tracker.current_layer = -1
                 logger.error(f"MLX generation error: {gen_err}")
                 yield {"error": f"MLX generation error: {gen_err}", "done": True}
                 return

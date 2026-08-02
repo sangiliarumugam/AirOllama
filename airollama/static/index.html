@@ -611,11 +611,20 @@
   <main>
     <!-- Tab 1: Dashboard -->
     <div id="tab-dashboard" class="view-panel active">
-      <div class="grid-stats">
+      <!-- Top Row: Active Model & Active Layer -->
+      <div class="grid-top-row" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.25rem; margin-bottom: 1.25rem;">
         <div class="card">
           <div class="stat-label">Active Model</div>
           <div class="stat-val" id="stat-model" style="font-size: 1.4rem; word-break: break-all; overflow-wrap: anywhere; line-height: 1.25;">None</div>
         </div>
+        <div class="card">
+          <div class="stat-label">Active Layer</div>
+          <div class="stat-val" id="stat-layer" style="font-size: 1.15rem; word-break: break-word;">Idle</div>
+        </div>
+      </div>
+
+      <!-- Bottom Row: Memory & Offload Metrics -->
+      <div class="grid-stats">
         <div class="card">
           <div class="stat-label">Model RAM</div>
           <div class="stat-val" id="stat-model-ram">0.00 <small>GB</small></div>
@@ -627,10 +636,6 @@
         <div class="card">
           <div class="stat-label">VRAM / Metal Memory</div>
           <div class="stat-val" id="stat-vram">0.00 <small>GB</small></div>
-        </div>
-        <div class="card" style="grid-column: span 2; min-width: 320px;">
-          <div class="stat-label">Active Layer</div>
-          <div class="stat-val" id="stat-layer" style="font-size: 1.15rem; word-break: break-word;">Idle</div>
         </div>
         <div class="card" id="card-offload" style="border-color: rgba(255, 170, 0, 0.3);">
           <div class="stat-label">Disk Offload Status</div>

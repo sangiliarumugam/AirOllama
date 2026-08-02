@@ -1195,6 +1195,7 @@ print(response.choices[0].message.content)</div>
     }
 
     let streamingLayerIndex = -1;
+    let cachedModelTotalLayers = 0;
 
     async function updateStats(overrideData = null) {
       try {
@@ -1246,13 +1247,20 @@ print(response.choices[0].message.content)</div>
         const vramGb = (data.vram_mb / 1024).toFixed(2);
         document.getElementById('stat-vram').innerHTML = `${vramGb} <small>GB</small>`;
       }
+
+      // Update cached total layers if authoritative number received
+      if (data.total_layers && data.total_layers > 0) {
+        cachedModelTotalLayers = data.total_layers;
+      }
+
+      const totalL = cachedModelTotalLayers || data.total_layers || (currentModelData ? currentModelData.total_layers : 0);
       
       let layerText = 'Idle';
-      if (data.current_layer >= 0) {
+      if (data.current_layer >= 0 && totalL > 0) {
         if (data.is_paging) {
-          layerText = `Layer ${data.current_layer} / ${data.total_layers} (Disk ➔ RAM ⚡)`;
+          layerText = `Layer ${data.current_layer} / ${totalL} (Disk ➔ RAM ⚡)`;
         } else {
-          layerText = `Layer ${data.current_layer} / ${data.total_layers}`;
+          layerText = `Layer ${data.current_layer} / ${totalL}`;
         }
       }
       const statLayerEl = document.getElementById('stat-layer');
@@ -1285,24 +1293,38 @@ print(response.choices[0].message.content)</div>
       }
 
       const ramLayersEl = document.getElementById('offload-ram-layers');
-      if (ramLayersEl) ramLayersEl.innerText = `${data.ram_layers_count !== undefined ? data.ram_layers_count : (data.total_layers || 0)} / ${data.total_layers || 0} layers`;
+      if (ramLayersEl) ramLayersEl.innerText = `${data.ram_layers_count !== undefined ? data.ram_layers_count : totalL} / ${totalL} layers`;
 
       const diskLayersEl = document.getElementById('offload-disk-layers');
-      if (diskLayersEl) diskLayersEl.innerText = `${data.disk_layers_count || 0} / ${data.total_layers || 0} layers`;
+      if (diskLayersEl) diskLayersEl.innerText = `${data.disk_layers_count || 0} / ${totalL} layers`;
 
       const diskSizeEl = document.getElementById('offload-disk-size');
       if (diskSizeEl) diskSizeEl.innerText = `${data.offload_size_gb || '0.0'} GB`;
 
-      // Render visual layer boxes (frameless / no borders)
+      // Render visual layer boxes in-place without rebuilding DOM
       const boxesContainer = document.getElementById('layer-boxes');
       if (boxesContainer) {
         const activeModelName = data.active_model || userSelectedModel;
-        const totalL = data.total_layers || (currentModelData ? currentModelData.total_layers : 0);
         if (totalL > 0 && activeModelName) {
-          boxesContainer.innerHTML = '';
           const baseRam = !data.offload_active ? totalL : (data.base_ram_count !== undefined ? data.base_ram_count : (data.ram_layers_count || totalL));
+          
+          // Rebuild DOM nodes ONLY if count or model name changed
+          const currentCount = boxesContainer.children.length;
+          const currentModelTag = boxesContainer.dataset.model;
+          if (currentCount !== totalL || currentModelTag !== activeModelName) {
+            boxesContainer.dataset.model = activeModelName;
+            boxesContainer.innerHTML = '';
+            for (let i = 0; i < totalL; i++) {
+              const box = document.createElement('div');
+              box.innerText = i;
+              boxesContainer.appendChild(box);
+            }
+          }
+
+          // Update styles in-place on existing DOM elements (sub-millisecond speed, zero flicker!)
           for (let i = 0; i < totalL; i++) {
-            const box = document.createElement('div');
+            const box = boxesContainer.children[i];
+            if (!box) continue;
             const isActiveExecutingLayer = (i === data.current_layer);
             const isBaseRamLayer = i < baseRam;
             const isPagedToRam = isActiveExecutingLayer && i >= baseRam;
@@ -1322,10 +1344,9 @@ print(response.choices[0].message.content)</div>
 
             box.className = `layer-box ${isActiveExecutingLayer ? 'active' : ''}`;
             box.setAttribute('style', inlineStyle);
-            box.innerText = i;
-            boxesContainer.appendChild(box);
           }
         } else {
+          boxesContainer.removeAttribute('data-model');
           boxesContainer.innerHTML = '<div class="layer-box" style="border: none;">Ready</div>';
         }
       }
@@ -1828,14 +1849,11 @@ print(response.choices[0].message.content)</div>
               if (data.memory) {
                 renderStatsData(data.memory);
               } else if (isGenerating) {
-                const totalL = currentModelData ? (currentModelData.total_layers || 26) : 26;
+                const totalL = cachedModelTotalLayers || (currentModelData ? currentModelData.total_layers : 0) || 32;
                 streamingLayerIndex = (streamingLayerIndex + 1) % totalL;
                 renderStatsData({
                   current_layer: streamingLayerIndex,
-                  total_layers: totalL,
-                  active_model: model,
-                  ram_layers_count: totalL,
-                  disk_layers_count: 0
+                  active_model: model
                 });
               }
 

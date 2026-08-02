@@ -621,10 +621,6 @@
           <div class="stat-val" id="stat-model-ram">0.00 <small>GB</small></div>
         </div>
         <div class="card">
-          <div class="stat-label">Engine Overhead</div>
-          <div class="stat-val" id="stat-engine-ram" style="font-size: 1.05rem; color: var(--text-muted);">0.00 <small>GB</small></div>
-        </div>
-        <div class="card">
           <div class="stat-label">Available System RAM</div>
           <div class="stat-val" id="stat-sysram">0.0 / 0.0 <small>GB</small></div>
         </div>
@@ -1211,15 +1207,10 @@ print(response.choices[0].message.content)</div>
         updateRamControlsState(userSelectedModel || data.active_model);
         
         const modelRamGb = (data.model_ram_gb || 0).toFixed(2);
-        const engineRamGb = (data.engine_ram_gb || 0).toFixed(2);
         const modelRamEl = document.getElementById('stat-model-ram');
-        const engineRamEl = document.getElementById('stat-engine-ram');
         if (modelRamEl) {
           const hasModel = data.active_model && parseFloat(modelRamGb) > 0.01;
           modelRamEl.innerHTML = `<span style="color: ${hasModel ? 'var(--accent-cyan)' : 'var(--text-muted)'};">${modelRamGb}</span> <small>GB</small>`;
-        }
-        if (engineRamEl) {
-          engineRamEl.innerHTML = `${engineRamGb} <small>GB</small>`;
         }
 
         const availGb = data.available_ram_gb ? data.available_ram_gb.toFixed(1) : '0.0';

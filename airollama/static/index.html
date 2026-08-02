@@ -1524,6 +1524,8 @@ print(response.choices[0].message.content)</div>
     let chatAbortController = null;
     let chatConversationHistory = [];
 
+    let preloadAnimationTimer = null;
+
     async function preloadCurrentModel(showGreeting = true) {
       const select = document.getElementById('chat-model-select');
       const modelName = select ? select.value : '';
@@ -1532,8 +1534,34 @@ print(response.choices[0].message.content)</div>
 
       const statModel = document.getElementById('stat-model');
       if (statModel) {
-        statModel.innerHTML = formatModelTileHTML(modelName, '#ffaa00', '⌛ Loading ');
+        statModel.innerHTML = formatModelTileHTML(modelName, '#ffaa00', '⌛ Preloading ');
       }
+
+      const totalL = (currentModelData && currentModelData.total_layers) ? currentModelData.total_layers : 32;
+      cachedModelTotalLayers = totalL;
+      
+      // Start live real-time layer loading animation during model preload
+      if (preloadAnimationTimer) clearInterval(preloadAnimationTimer);
+      let loadStep = 0;
+      renderStatsData({
+        active_model: modelName,
+        total_layers: totalL,
+        current_layer: 0,
+        ram_layers_count: 0,
+        disk_layers_count: 0
+      });
+
+      preloadAnimationTimer = setInterval(() => {
+        loadStep = (loadStep + 1) % totalL;
+        const loadedCount = Math.min(totalL, loadStep + 1);
+        renderStatsData({
+          active_model: modelName,
+          total_layers: totalL,
+          current_layer: loadStep,
+          ram_layers_count: loadedCount,
+          disk_layers_count: 0
+        });
+      }, 60);
 
       const messagesContainer = document.getElementById('chat-messages');
       if (showGreeting && messagesContainer) {
@@ -1556,10 +1584,15 @@ print(response.choices[0].message.content)</div>
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ model: modelName, max_ram_gb: ramVal })
         });
+
+        if (preloadAnimationTimer) {
+          clearInterval(preloadAnimationTimer);
+          preloadAnimationTimer = null;
+        }
+
         if (res.ok) {
           const currentSelect = document.getElementById('chat-model-select');
           if (!currentSelect || currentSelect.value !== modelName) {
-            // User unselected or switched model while preloading was in flight
             return;
           }
           const greetingEl = document.getElementById('initial-model-greeting');
@@ -1573,6 +1606,10 @@ print(response.choices[0].message.content)</div>
           }
         }
       } catch (e) {
+        if (preloadAnimationTimer) {
+          clearInterval(preloadAnimationTimer);
+          preloadAnimationTimer = null;
+        }
         console.error("Preload request failed", e);
         if (statModel) {
           statModel.innerHTML = `<span style="color: var(--danger);">❌ Load Failed</span>`;

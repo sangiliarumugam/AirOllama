@@ -229,13 +229,18 @@
       box-sizing: border-box;
     }
 
+    @keyframes layerPulse {
+      0% { transform: scale(1.0); box-shadow: 0 0 10px rgba(0, 242, 254, 0.6); }
+      50% { transform: scale(1.2); box-shadow: 0 0 22px rgba(0, 242, 254, 1.0), 0 0 35px rgba(121, 40, 202, 0.85); }
+      100% { transform: scale(1.0); box-shadow: 0 0 10px rgba(0, 242, 254, 0.6); }
+    }
+
     .layer-box.active {
-      background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple));
-      color: #000;
+      background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple)) !important;
+      color: #fff !important;
       font-weight: 700;
-      box-shadow: 0 0 14px rgba(0, 242, 254, 0.85);
-      transform: scale(1.1);
-      z-index: 2;
+      animation: layerPulse 0.35s ease-in-out infinite;
+      z-index: 10;
     }
 
     /* LED Panel & Speed Monitor Styles */
@@ -1189,122 +1194,140 @@ print(response.choices[0].message.content)</div>
       return `<span style="color: ${color}; font-weight: bold; font-size: ${fontSize}; word-break: break-all; overflow-wrap: anywhere; line-height: 1.25;">${fullText}</span>`;
     }
 
-    async function updateStats() {
+    let streamingLayerIndex = -1;
+
+    async function updateStats(overrideData = null) {
       try {
-        const res = await fetch('/api/ps');
-        const data = await res.json();
-        
-        const statModelEl = document.getElementById('stat-model');
-        const selectEl = document.getElementById('chat-model-select');
-        const userSelectedModel = selectEl ? selectEl.value : '';
-
-        if (statModelEl) {
-          if (userSelectedModel && data.active_model && data.active_model === userSelectedModel) {
-            statModelEl.innerHTML = formatModelTileHTML(data.active_model, 'var(--accent-cyan)');
-          } else if (userSelectedModel && statModelEl.innerHTML.includes('Loading')) {
-            // Keep loading status text while loading in progress for user selected model
-          } else {
-            statModelEl.innerHTML = formatModelTileHTML('', 'var(--text-muted)');
-          }
+        let data = overrideData;
+        if (!data) {
+          const res = await fetch('/api/ps');
+          data = await res.json();
         }
-        
-        updateRamControlsState(userSelectedModel || data.active_model);
-        
-        const modelRamGb = (data.model_ram_gb || 0).toFixed(2);
-        const modelRamEl = document.getElementById('stat-model-ram');
-        if (modelRamEl) {
-          const hasModel = data.active_model && parseFloat(modelRamGb) > 0.01;
-          modelRamEl.innerHTML = `<span style="color: ${hasModel ? 'var(--accent-cyan)' : 'var(--text-muted)'};">${modelRamGb}</span> <small>GB</small>`;
-        }
-
-        const availGb = data.available_ram_gb ? data.available_ram_gb.toFixed(1) : '0.0';
-        const totalGb = data.total_ram_gb ? data.total_ram_gb.toFixed(1) : '0.0';
-        document.getElementById('stat-sysram').innerHTML = `${availGb} / ${totalGb} <small>GB</small>`;
-
-        const vramGb = (data.vram_mb / 1024).toFixed(2);
-        document.getElementById('stat-vram').innerHTML = `${vramGb} <small>GB</small>`;
-        
-        let layerText = 'Idle';
-        if (data.current_layer >= 0) {
-          if (data.is_paging) {
-            layerText = `Layer ${data.current_layer} / ${data.total_layers} (Disk ➔ RAM ⚡)`;
-          } else {
-            layerText = `Layer ${data.current_layer} / ${data.total_layers}`;
-          }
-        }
-        document.getElementById('stat-layer').innerText = layerText;
-
-        // Disk Offload Live Activity Update
-        const statOffload = document.getElementById('stat-offload');
-        if (statOffload) {
-          if (data.offload_active) {
-            const statusLabel = data.is_paging ? `Paging Layer ${data.current_layer}` : 'Active';
-            statOffload.innerHTML = `<span style="color: #ffaa00;">${statusLabel}</span> <small>(${data.disk_layers_count || 0} disk)</small>`;
-          } else {
-            statOffload.innerHTML = `<span style="color: var(--accent-cyan);">Inactive</span> <small>(0 disk)</small>`;
-          }
-        }
-
-        const offloadBadge = document.getElementById('offload-badge');
-        if (offloadBadge) {
-          if (data.offload_active) {
-            offloadBadge.style.background = 'rgba(255, 170, 0, 0.2)';
-            offloadBadge.style.color = '#ffaa00';
-            offloadBadge.style.borderColor = 'rgba(255, 170, 0, 0.4)';
-            offloadBadge.innerText = data.is_paging ? '💾 Disk ➔ RAM Paging Active' : '💾 Disk Offloading Active';
-          } else {
-            offloadBadge.style.background = 'rgba(0, 242, 254, 0.1)';
-            offloadBadge.style.color = 'var(--accent-cyan)';
-            offloadBadge.style.borderColor = 'rgba(0, 242, 254, 0.3)';
-            offloadBadge.innerText = '⚡ 100% RAM / GPU Active';
-          }
-        }
-
-        const ramLayersEl = document.getElementById('offload-ram-layers');
-        if (ramLayersEl) ramLayersEl.innerText = `${data.ram_layers_count !== undefined ? data.ram_layers_count : (data.total_layers || 0)} / ${data.total_layers || 0} layers`;
-
-        const diskLayersEl = document.getElementById('offload-disk-layers');
-        if (diskLayersEl) diskLayersEl.innerText = `${data.disk_layers_count || 0} / ${data.total_layers || 0} layers`;
-
-        const diskSizeEl = document.getElementById('offload-disk-size');
-        if (diskSizeEl) diskSizeEl.innerText = `${data.offload_size_gb || '0.0'} GB`;
-
-        // Render visual layer boxes (frameless / no borders)
-        const boxesContainer = document.getElementById('layer-boxes');
-        if (boxesContainer) {
-          if (data.total_layers > 0 && data.active_model) {
-            boxesContainer.innerHTML = '';
-            const baseRam = !data.offload_active ? data.total_layers : (data.base_ram_count !== undefined ? data.base_ram_count : (data.ram_layers_count || data.total_layers));
-            for (let i = 0; i < data.total_layers; i++) {
-              const box = document.createElement('div');
-              const isActiveExecutingLayer = (i === data.current_layer);
-              const isBaseRamLayer = i < baseRam;
-              const isPagedToRam = isActiveExecutingLayer && i >= baseRam;
-
-              let inlineStyle = 'border: none;';
-              if (isActiveExecutingLayer) {
-                if (isPagedToRam) {
-                  inlineStyle += ' background: linear-gradient(135deg, #00f2fe, #ffaa00); color: #000; font-weight: bold; box-shadow: 0 0 16px rgba(0, 242, 254, 0.9); transform: scale(1.15); z-index: 5;';
-                } else {
-                  inlineStyle += ' background: linear-gradient(135deg, #00f2fe, #7928ca); color: #fff; font-weight: bold; box-shadow: 0 0 16px rgba(0, 242, 254, 0.95); transform: scale(1.15); z-index: 5;';
-                }
-              } else if (isBaseRamLayer) {
-                inlineStyle += ' background: rgba(0, 242, 254, 0.15); color: var(--accent-cyan);';
-              } else {
-                inlineStyle += ' background: rgba(255, 170, 0, 0.2); color: #ffaa00;';
-              }
-
-              box.className = `layer-box ${isActiveExecutingLayer ? 'active' : ''}`;
-              box.setAttribute('style', inlineStyle);
-              box.innerText = i;
-              boxesContainer.appendChild(box);
-            }
-          } else {
-            boxesContainer.innerHTML = '<div class="layer-box" style="border: none;">Ready</div>';
-          }
-        }
+        renderStatsData(data);
       } catch (e) {
         console.error("Stats update failed", e);
+      }
+    }
+
+    function renderStatsData(data) {
+      if (!data) return;
+      const statModelEl = document.getElementById('stat-model');
+      const selectEl = document.getElementById('chat-model-select');
+      const userSelectedModel = selectEl ? selectEl.value : '';
+
+      if (statModelEl) {
+        if (userSelectedModel && data.active_model && data.active_model === userSelectedModel) {
+          statModelEl.innerHTML = formatModelTileHTML(data.active_model, 'var(--accent-cyan)');
+        } else if (userSelectedModel && statModelEl.innerHTML.includes('Loading')) {
+          // Keep loading status text while loading in progress
+        } else if (data.active_model) {
+          statModelEl.innerHTML = formatModelTileHTML(data.active_model, 'var(--accent-cyan)');
+        } else {
+          statModelEl.innerHTML = formatModelTileHTML('', 'var(--text-muted)');
+        }
+      }
+      
+      updateRamControlsState(userSelectedModel || data.active_model);
+      
+      const modelRamGb = (data.model_ram_gb || 0).toFixed(2);
+      const modelRamEl = document.getElementById('stat-model-ram');
+      if (modelRamEl) {
+        const hasModel = data.active_model && parseFloat(modelRamGb) > 0.01;
+        modelRamEl.innerHTML = `<span style="color: ${hasModel ? 'var(--accent-cyan)' : 'var(--text-muted)'};">${modelRamGb}</span> <small>GB</small>`;
+      }
+
+      if (data.available_ram_gb && data.total_ram_gb) {
+        const availGb = data.available_ram_gb.toFixed(1);
+        const totalGb = data.total_ram_gb.toFixed(1);
+        document.getElementById('stat-sysram').innerHTML = `${availGb} / ${totalGb} <small>GB</small>`;
+      }
+
+      if (data.vram_mb !== undefined) {
+        const vramGb = (data.vram_mb / 1024).toFixed(2);
+        document.getElementById('stat-vram').innerHTML = `${vramGb} <small>GB</small>`;
+      }
+      
+      let layerText = 'Idle';
+      if (data.current_layer >= 0) {
+        if (data.is_paging) {
+          layerText = `Layer ${data.current_layer} / ${data.total_layers} (Disk ➔ RAM ⚡)`;
+        } else {
+          layerText = `Layer ${data.current_layer} / ${data.total_layers}`;
+        }
+      }
+      const statLayerEl = document.getElementById('stat-layer');
+      if (statLayerEl) statLayerEl.innerText = layerText;
+
+      // Disk Offload Live Activity Update
+      const statOffload = document.getElementById('stat-offload');
+      if (statOffload) {
+        if (data.offload_active) {
+          const statusLabel = data.is_paging ? `Paging Layer ${data.current_layer}` : 'Active';
+          statOffload.innerHTML = `<span style="color: #ffaa00;">${statusLabel}</span> <small>(${data.disk_layers_count || 0} disk)</small>`;
+        } else {
+          statOffload.innerHTML = `<span style="color: var(--accent-cyan);">Inactive</span> <small>(0 disk)</small>`;
+        }
+      }
+
+      const offloadBadge = document.getElementById('offload-badge');
+      if (offloadBadge) {
+        if (data.offload_active) {
+          offloadBadge.style.background = 'rgba(255, 170, 0, 0.2)';
+          offloadBadge.style.color = '#ffaa00';
+          offloadBadge.style.borderColor = 'rgba(255, 170, 0, 0.4)';
+          offloadBadge.innerText = data.is_paging ? '💾 Disk ➔ RAM Paging Active' : '💾 Disk Offloading Active';
+        } else {
+          offloadBadge.style.background = 'rgba(0, 242, 254, 0.1)';
+          offloadBadge.style.color = 'var(--accent-cyan)';
+          offloadBadge.style.borderColor = 'rgba(0, 242, 254, 0.3)';
+          offloadBadge.innerText = '⚡ 100% RAM / GPU Active';
+        }
+      }
+
+      const ramLayersEl = document.getElementById('offload-ram-layers');
+      if (ramLayersEl) ramLayersEl.innerText = `${data.ram_layers_count !== undefined ? data.ram_layers_count : (data.total_layers || 0)} / ${data.total_layers || 0} layers`;
+
+      const diskLayersEl = document.getElementById('offload-disk-layers');
+      if (diskLayersEl) diskLayersEl.innerText = `${data.disk_layers_count || 0} / ${data.total_layers || 0} layers`;
+
+      const diskSizeEl = document.getElementById('offload-disk-size');
+      if (diskSizeEl) diskSizeEl.innerText = `${data.offload_size_gb || '0.0'} GB`;
+
+      // Render visual layer boxes (frameless / no borders)
+      const boxesContainer = document.getElementById('layer-boxes');
+      if (boxesContainer) {
+        const activeModelName = data.active_model || userSelectedModel;
+        const totalL = data.total_layers || (currentModelData ? currentModelData.total_layers : 0);
+        if (totalL > 0 && activeModelName) {
+          boxesContainer.innerHTML = '';
+          const baseRam = !data.offload_active ? totalL : (data.base_ram_count !== undefined ? data.base_ram_count : (data.ram_layers_count || totalL));
+          for (let i = 0; i < totalL; i++) {
+            const box = document.createElement('div');
+            const isActiveExecutingLayer = (i === data.current_layer);
+            const isBaseRamLayer = i < baseRam;
+            const isPagedToRam = isActiveExecutingLayer && i >= baseRam;
+
+            let inlineStyle = 'border: none;';
+            if (isActiveExecutingLayer) {
+              if (isPagedToRam) {
+                inlineStyle += ' background: linear-gradient(135deg, #00f2fe, #ffaa00) !important; color: #000 !important; font-weight: bold; transform: scale(1.15); z-index: 5;';
+              } else {
+                inlineStyle += ' background: linear-gradient(135deg, #00f2fe, #7928ca) !important; color: #fff !important; font-weight: bold; transform: scale(1.15); z-index: 5;';
+              }
+            } else if (isBaseRamLayer) {
+              inlineStyle += ' background: rgba(0, 242, 254, 0.15); color: var(--accent-cyan);';
+            } else {
+              inlineStyle += ' background: rgba(255, 170, 0, 0.2); color: #ffaa00;';
+            }
+
+            box.className = `layer-box ${isActiveExecutingLayer ? 'active' : ''}`;
+            box.setAttribute('style', inlineStyle);
+            box.innerText = i;
+            boxesContainer.appendChild(box);
+          }
+        } else {
+          boxesContainer.innerHTML = '<div class="layer-box" style="border: none;">Ready</div>';
+        }
       }
     }
 
@@ -1800,6 +1823,20 @@ print(response.choices[0].message.content)</div>
                 chunkText = data.message.content;
               } else if (data.response !== undefined) {
                 chunkText = data.response;
+              }
+
+              if (data.memory) {
+                renderStatsData(data.memory);
+              } else if (isGenerating) {
+                const totalL = currentModelData ? (currentModelData.total_layers || 26) : 26;
+                streamingLayerIndex = (streamingLayerIndex + 1) % totalL;
+                renderStatsData({
+                  current_layer: streamingLayerIndex,
+                  total_layers: totalL,
+                  active_model: model,
+                  ram_layers_count: totalL,
+                  disk_layers_count: 0
+                });
               }
 
               if (chunkText) {

@@ -72,38 +72,88 @@ class AirOllamaApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNavigat
     func checkAndStartServer() {
         let task = URLSession.shared.dataTask(with: URL(string: "http://127.0.0.1:11211/api/version")!) { [weak self] (data, response, error) in
             if error != nil {
-                print("⚡ Server not detected on 11211, starting background server process...")
+                print("⚡ Server not detected on port 11211. Starting background AirOllama server...")
                 DispatchQueue.main.async {
                     self?.launchServerScript()
                 }
             } else {
                 print("✅ AirOllama server is active on http://127.0.0.1:11211")
+                DispatchQueue.main.async {
+                    self?.loadDashboard()
+                }
             }
         }
         task.resume()
     }
     
     func launchServerScript() {
+        let bundlePath = Bundle.main.bundlePath
+        let parentDir = ((bundlePath as NSString).deletingLastPathComponent as NSString).deletingLastPathComponent
         let currentDir = FileManager.default.currentDirectoryPath
-        let scriptPath = (currentDir as NSString).appendingPathComponent("run_server.sh")
         
-        if FileManager.default.fileExists(atPath: scriptPath) {
-            let proc = Process()
-            proc.executableURL = URL(fileURLWithPath: "/bin/bash")
-            proc.arguments = [scriptPath, "11211"]
-            proc.currentDirectoryURL = URL(fileURLWithPath: currentDir)
-            do {
-                try proc.run()
-                self.serverProcess = proc
-                print("🚀 Launched AirOllama server process (PID: \(proc.processIdentifier))")
-                
-                DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { [weak self] in
-                    self?.loadDashboard()
-                }
-            } catch {
-                print("Error launching server process: \(error)")
+        let candidatePaths = [
+            (parentDir as NSString).appendingPathComponent("run_server.sh"),
+            (currentDir as NSString).appendingPathComponent("run_server.sh"),
+            Bundle.main.path(forResource: "run_server", ofType: "sh") ?? "",
+            "/Users/sangili/Projects/airollama/run_server.sh"
+        ]
+        
+        var targetScript: String? = nil
+        var targetWorkDir: String? = nil
+        
+        for path in candidatePaths {
+            if !path.isEmpty && FileManager.default.fileExists(atPath: path) {
+                targetScript = path
+                targetWorkDir = (path as NSString).deletingLastPathComponent
+                break
             }
         }
+        
+        guard let scriptPath = targetScript, let workDir = targetWorkDir else {
+            print("❌ Could not locate run_server.sh in candidate paths")
+            return
+        }
+        
+        print("🚀 Launching server script at: \(scriptPath) (Working Dir: \(workDir))")
+        
+        let proc = Process()
+        proc.executableURL = URL(fileURLWithPath: "/bin/bash")
+        proc.arguments = [scriptPath, "11211"]
+        proc.currentDirectoryURL = URL(fileURLWithPath: workDir)
+        
+        var env = ProcessInfo.processInfo.environment
+        env["PATH"] = "/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/opt/homebrew/bin:" + (env["PATH"] ?? "")
+        proc.environment = env
+        
+        do {
+            try proc.run()
+            self.serverProcess = proc
+            print("🚀 Successfully started AirOllama server process (PID: \(proc.processIdentifier))")
+            
+            pollServerReadiness(attemptsLeft: 12)
+        } catch {
+            print("Error launching server process: \(error)")
+        }
+    }
+    
+    func pollServerReadiness(attemptsLeft: Int) {
+        if attemptsLeft <= 0 {
+            loadDashboard()
+            return
+        }
+        let task = URLSession.shared.dataTask(with: URL(string: "http://127.0.0.1:11211/api/version")!) { [weak self] (data, response, error) in
+            if error == nil {
+                print("✅ Server is ready on 11211! Loading dashboard...")
+                DispatchQueue.main.async {
+                    self?.loadDashboard()
+                }
+            } else {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                    self?.pollServerReadiness(attemptsLeft: attemptsLeft - 1)
+                }
+            }
+        }
+        task.resume()
     }
     
     @objc func showDashboard() {
@@ -113,12 +163,12 @@ class AirOllamaApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNavigat
     }
     
     @objc func openModelsFolder() {
-        let modelsDir = (FileManager.default.currentDirectoryPath as NSString).appendingPathComponent("models")
+        let modelsDir = "/Users/sangili/Projects/airollama/models"
         NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: modelsDir)
     }
     
     @objc func openLogsFolder() {
-        let logPath = (FileManager.default.currentDirectoryPath as NSString).appendingPathComponent("airollama.log")
+        let logPath = "/Users/sangili/Projects/airollama/airollama.log"
         if FileManager.default.fileExists(atPath: logPath) {
             NSWorkspace.shared.open(URL(fileURLWithPath: logPath))
         }

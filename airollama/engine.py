@@ -285,7 +285,22 @@ class AirEngine:
         if size_gb <= 0:
             size_gb = 4.0
 
-        # Try reading total_layers directly from local config.json if downloaded
+        # Try reading total_layers directly from local config.json if downloaded (supports nested text_config, decoder, etc.)
+        def extract_layers(d):
+            if not isinstance(d, dict):
+                return None
+            for k in ["num_hidden_layers", "n_layer", "num_layers", "n_layers"]:
+                if k in d and isinstance(d[k], int) and d[k] > 0:
+                    return d[k]
+            if "layer_types" in d and isinstance(d["layer_types"], list) and len(d["layer_types"]) > 0:
+                return len(d["layer_types"])
+            for sub in ["text_config", "decoder", "model", "language_config"]:
+                if sub in d:
+                    res = extract_layers(d[sub])
+                    if res:
+                        return res
+            return None
+
         num_layers = 32
         config_file = os.path.join(target_path, "config.json")
         if os.path.exists(config_file):
@@ -293,14 +308,20 @@ class AirEngine:
                 import json
                 with open(config_file, "r") as fcfg:
                     cfg_data = json.load(fcfg)
-                    num_layers = cfg_data.get("num_hidden_layers", cfg_data.get("n_layer", cfg_data.get("num_layers", 32)))
+                    extracted = extract_layers(cfg_data)
+                    if extracted:
+                        num_layers = extracted
             except Exception:
                 pass
         else:
             try:
                 from transformers import AutoConfig
                 cfg = AutoConfig.from_pretrained(target_path, trust_remote_code=True)
-                num_layers = getattr(cfg, "num_hidden_layers", getattr(cfg, "n_layer", 32))
+                extracted = extract_layers(getattr(cfg, "to_dict", lambda: {})())
+                if extracted:
+                    num_layers = extracted
+                else:
+                    num_layers = getattr(cfg, "num_hidden_layers", getattr(cfg, "n_layer", 32))
             except Exception:
                 pass
 
@@ -387,13 +408,23 @@ class AirEngine:
                 self.current_model_name = model_name
                 self.current_ram_cap = max_ram_gb
 
-                num_layers = getattr(getattr(self.mlx_model, "args", None), "num_hidden_layers", 64)
-                self.memory_tracker.total_layers = num_layers
+                args = getattr(self.mlx_model, "args", None)
+                num_layers = getattr(args, "num_hidden_layers", None)
+                if not num_layers and hasattr(args, "text_config"):
+                    tc = getattr(args, "text_config", {})
+                    if isinstance(tc, dict):
+                        num_layers = tc.get("num_hidden_layers", len(tc.get("layer_types", [])))
+                    elif hasattr(tc, "num_hidden_layers"):
+                        num_layers = getattr(tc, "num_hidden_layers", None)
+                if not num_layers:
+                    num_layers = self.get_model_ram_requirements(model_name).get("total_layers", 64)
+
+                self.memory_tracker.total_layers = int(num_layers)
                 self.memory_tracker.active_model = model_name
-                self.memory_tracker.ram_layers_count = num_layers
+                self.memory_tracker.ram_layers_count = int(num_layers)
                 self.memory_tracker.disk_layers_count = 0
                 self.memory_tracker.offload_active = False
-                logger.info(f"✅ Successfully loaded Apple MLX model '{model_name}' on Metal GPU!")
+                logger.info(f"✅ Successfully loaded Apple MLX model '{model_name}' ({self.memory_tracker.total_layers} layers) on Metal GPU!")
                 return True
             except Exception as mlx_err:
                 logger.error(f"Failed to load MLX model '{model_name}': {mlx_err}")

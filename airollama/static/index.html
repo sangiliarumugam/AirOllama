@@ -1531,6 +1531,16 @@ print(response.choices[0].message.content)</div>
         statModel.innerHTML = formatModelTileHTML(modelName, '#ffaa00', '⌛ Preloading ');
       }
 
+      // Ensure exact total_layers is known for modelName before starting preloading animation
+      if (!currentModelData || currentModelData.name !== modelName || !currentModelData.total_layers) {
+        try {
+          const reqRes = await fetch(`/api/ram_requirements?model=${encodeURIComponent(modelName)}`);
+          if (reqRes.ok) {
+            currentModelData = await reqRes.json();
+          }
+        } catch (e) {}
+      }
+
       const totalL = (currentModelData && currentModelData.total_layers) ? currentModelData.total_layers : 32;
       cachedModelTotalLayers = totalL;
       

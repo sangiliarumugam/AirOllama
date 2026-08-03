@@ -267,9 +267,9 @@ class AirEngine:
     def load_model(self, model_name: str, force_reload: bool = False) -> bool:
         """Load tokenizer and prepare model architecture for layer-streaming."""
         from airollama.ollama_registry import resolve_ollama_to_hf
-    def get_model_ram_requirements(self, model_name: str) -> Dict[str, float]:
+    def get_model_ram_requirements(self, model_name: str) -> Dict[str, Any]:
         """
-        Calculate the bare minimum and recommended RAM required for a model to function cleanly.
+        Calculate bare minimum RAM, recommended RAM, and total layer count for a model.
         """
         from airollama.ollama_registry import resolve_ollama_to_hf
         resolved_name = resolve_ollama_to_hf(model_name)
@@ -285,6 +285,25 @@ class AirEngine:
         if size_gb <= 0:
             size_gb = 4.0
 
+        # Try reading total_layers directly from local config.json if downloaded
+        num_layers = 32
+        config_file = os.path.join(target_path, "config.json")
+        if os.path.exists(config_file):
+            try:
+                import json
+                with open(config_file, "r") as fcfg:
+                    cfg_data = json.load(fcfg)
+                    num_layers = cfg_data.get("num_hidden_layers", cfg_data.get("n_layer", cfg_data.get("num_layers", 32)))
+            except Exception:
+                pass
+        else:
+            try:
+                from transformers import AutoConfig
+                cfg = AutoConfig.from_pretrained(target_path, trust_remote_code=True)
+                num_layers = getattr(cfg, "num_hidden_layers", getattr(cfg, "n_layer", 32))
+            except Exception:
+                pass
+
         # Bare minimum RAM to function without thrashing disk I/O (embeddings + KV cache + active layers)
         min_ram_gb = round(max(2.5, size_gb * 0.45), 1)
 
@@ -295,7 +314,8 @@ class AirEngine:
         return {
             "model_size_gb": round(size_gb, 2),
             "min_ram_gb": min_ram_gb,
-            "recommended_ram_gb": recommended_ram_gb
+            "recommended_ram_gb": recommended_ram_gb,
+            "total_layers": int(num_layers)
         }
 
     def load_model(self, model_name: str, max_ram_gb: Optional[float] = None) -> bool:

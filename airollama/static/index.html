@@ -229,17 +229,11 @@
       box-sizing: border-box;
     }
 
-    @keyframes layerPulse {
-      0% { transform: scale(1.0); box-shadow: 0 0 10px rgba(0, 242, 254, 0.6); }
-      50% { transform: scale(1.2); box-shadow: 0 0 22px rgba(0, 242, 254, 1.0), 0 0 35px rgba(121, 40, 202, 0.85); }
-      100% { transform: scale(1.0); box-shadow: 0 0 10px rgba(0, 242, 254, 0.6); }
-    }
-
     .layer-box.active {
       background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple)) !important;
       color: #fff !important;
       font-weight: 700;
-      animation: layerPulse 0.35s ease-in-out infinite;
+      box-shadow: 0 0 16px rgba(0, 242, 254, 0.95), 0 0 24px rgba(121, 40, 202, 0.8) !important;
       z-index: 10;
     }
 
@@ -1332,9 +1326,9 @@ print(response.choices[0].message.content)</div>
             let inlineStyle = 'border: none;';
             if (isActiveExecutingLayer) {
               if (isPagedToRam) {
-                inlineStyle += ' background: linear-gradient(135deg, #00f2fe, #ffaa00) !important; color: #000 !important; font-weight: bold; transform: scale(1.15); z-index: 5;';
+                inlineStyle += ' background: linear-gradient(135deg, #00f2fe, #ffaa00) !important; color: #000 !important; font-weight: bold; box-shadow: 0 0 16px rgba(0, 242, 254, 0.95), 0 0 24px rgba(255, 170, 0, 0.8) !important; z-index: 5;';
               } else {
-                inlineStyle += ' background: linear-gradient(135deg, #00f2fe, #7928ca) !important; color: #fff !important; font-weight: bold; transform: scale(1.15); z-index: 5;';
+                inlineStyle += ' background: linear-gradient(135deg, #00f2fe, #7928ca) !important; color: #fff !important; font-weight: bold; box-shadow: 0 0 16px rgba(0, 242, 254, 0.95), 0 0 24px rgba(121, 40, 202, 0.8) !important; z-index: 5;';
               }
             } else if (isBaseRamLayer) {
               inlineStyle += ' background: rgba(0, 242, 254, 0.15); color: var(--accent-cyan);';

@@ -698,151 +698,185 @@
       </div>
     </div>
 
-    <!-- Tab 2: Antigravity Coding Agent IDE Playground -->
-    <div id="tab-playground" class="view-panel">
-      <!-- Top Agent Control Bar -->
-      <div class="agent-topbar" style="background: rgba(10, 15, 28, 0.85); border: 1px solid var(--card-border); border-radius: 14px; padding: 0.85rem 1.25rem; margin-bottom: 1rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem;">
-        <div style="display: flex; align-items: center; gap: 0.85rem;">
-          <div style="width: 38px; height: 38px; border-radius: 10px; background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple)); display: flex; align-items: center; justify-content: center; font-size: 1.2rem; color: #000; font-weight: bold; box-shadow: 0 0 16px rgba(0, 242, 254, 0.4);">
-            🤖
+    <!-- Tab 2: Google Antigravity Agent Interface -->
+    <div id="tab-playground" class="view-panel" style="height: calc(100vh - 140px); display: flex; flex-direction: column; gap: 0.75rem;">
+      
+      <!-- Top Global Antigravity Agent Header -->
+      <div style="background: rgba(10, 15, 28, 0.95); border: 1px solid rgba(0, 242, 254, 0.3); border-radius: 12px; padding: 0.6rem 1rem; display: flex; align-items: center; justify-content: space-between;">
+        <div style="display: flex; align-items: center; gap: 0.75rem;">
+          <div style="width: 32px; height: 32px; border-radius: 8px; background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple)); display: flex; align-items: center; justify-content: center; font-size: 1rem; font-weight: bold; color: #000; box-shadow: 0 0 12px rgba(0, 242, 254, 0.5);">
+            ⚡
           </div>
           <div>
-            <div style="font-weight: 700; font-size: 1.05rem; display: flex; align-items: center; gap: 0.5rem;">
-              <span>Antigravity Coding Agent</span>
-              <span style="font-size: 0.72rem; background: rgba(0, 242, 254, 0.15); color: var(--accent-cyan); border: 1px solid rgba(0, 242, 254, 0.3); padding: 2px 8px; border-radius: 12px; font-weight: 600;">ACTIVE AGENT</span>
+            <div style="font-weight: 800; font-size: 0.95rem; letter-spacing: -0.2px; display: flex; align-items: center; gap: 0.5rem;">
+              <span style="color: #fff;">Antigravity Agent</span>
+              <span style="font-size: 0.65rem; background: rgba(0, 242, 254, 0.15); color: var(--accent-cyan); border: 1px solid rgba(0, 242, 254, 0.3); padding: 1px 6px; border-radius: 10px; font-weight: 700;">v2.0 PRO</span>
             </div>
-            <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 2px;">
-              Autonomous Code Inspection, Multi-File Editing & Terminal Execution
+            <div style="font-size: 0.72rem; color: var(--text-muted);" id="agent-active-project-path">
+              Project: AirOllama Core (/Users/sangili/Projects/airollama)
             </div>
           </div>
         </div>
 
-        <div style="display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap;">
-          <div style="display: flex; align-items: center; gap: 0.35rem;">
-            <label style="font-size: 0.8rem; color: var(--text-secondary); font-weight: 600;">📁 Project:</label>
-            <select id="agent-project-select" onchange="onProjectSelectChange(this.value)" style="padding: 0.4rem 0.6rem; font-size: 0.82rem; background: rgba(0,0,0,0.5); border-color: rgba(0, 242, 254, 0.4); color: var(--accent-cyan); font-weight: 600; max-width: 170px;">
-              <option value="">Loading Projects...</option>
+        <div style="display: flex; align-items: center; gap: 0.6rem;">
+          <!-- Model Selector -->
+          <div style="display: flex; align-items: center; gap: 0.3rem;">
+            <label style="font-size: 0.75rem; color: var(--text-secondary); font-weight: 600;">Model:</label>
+            <select id="chat-model-select" onchange="onModelSelectChange(this.value)" style="padding: 0.35rem 0.6rem; font-size: 0.78rem; background: rgba(0,0,0,0.6); border: 1px solid rgba(0, 242, 254, 0.4); color: var(--accent-cyan); border-radius: 6px; font-weight: 600;">
+              <option value="">Select model...</option>
             </select>
-            <button class="btn-primary" style="padding: 0.38rem 0.6rem; font-size: 0.78rem; background: rgba(0, 242, 254, 0.2); color: var(--accent-cyan); border: 1px solid rgba(0, 242, 254, 0.4);" onclick="promptCreateProject()">➕ Project</button>
           </div>
 
-          <div style="display: flex; align-items: center; gap: 0.35rem;">
-            <label style="font-size: 0.8rem; color: var(--text-secondary); font-weight: 600;">💬 Thread:</label>
-            <select id="agent-conversation-select" onchange="onConversationSelectChange(this.value)" style="padding: 0.4rem 0.6rem; font-size: 0.82rem; background: rgba(0,0,0,0.5); border-color: rgba(157, 78, 221, 0.4); color: #d8b4fe; font-weight: 600; max-width: 170px;">
-              <option value="">Loading Threads...</option>
+          <!-- Mode Selector -->
+          <div style="display: flex; align-items: center; gap: 0.3rem;">
+            <label style="font-size: 0.75rem; color: var(--text-secondary); font-weight: 600;">Agent Mode:</label>
+            <select id="agent-role-select" onchange="setAgentRole(this.value)" style="padding: 0.35rem 0.6rem; font-size: 0.78rem; background: rgba(0,0,0,0.6); border: 1px solid rgba(157, 78, 221, 0.4); color: #d8b4fe; border-radius: 6px; font-weight: 600;">
+              <option value="pair_programmer">🤖 Pair Programmer</option>
+              <option value="architect">🚀 Software Architect</option>
+              <option value="debugger">🐛 Bug Hunter & Debugger</option>
+              <option value="performance">⚡ Performance Engineer</option>
             </select>
-            <button class="btn-primary" style="padding: 0.38rem 0.6rem; font-size: 0.78rem; background: rgba(157, 78, 221, 0.2); color: #d8b4fe; border: 1px solid rgba(157, 78, 221, 0.4);" onclick="createNewConversationThread()">💬 + Thread</button>
           </div>
 
-          <label style="font-size: 0.8rem; color: var(--text-secondary); font-weight: 600;">Role:</label>
-          <select id="agent-role-select" onchange="setAgentRole(this.value)" style="padding: 0.4rem 0.6rem; font-size: 0.82rem; background: rgba(0,0,0,0.5); border-color: rgba(0, 242, 254, 0.4); color: var(--accent-cyan); font-weight: 600;">
-            <option value="pair_programmer">🤖 Pair Programmer</option>
-            <option value="architect">🚀 Software Architect</option>
-            <option value="debugger">🐛 Bug Hunter</option>
-            <option value="performance">⚡ Performance Eng</option>
-          </select>
-          <button class="btn-primary" style="padding: 0.38rem 0.6rem; font-size: 0.78rem; background: rgba(0, 242, 254, 0.15); color: var(--accent-cyan); border: 1px solid rgba(0, 242, 254, 0.3);" onclick="loadWorkspaceTree()">🔄 Files</button>
-          <button class="btn-primary" style="padding: 0.38rem 0.6rem; font-size: 0.78rem; background: rgba(255, 170, 0, 0.15); color: #ffaa00; border: 1px solid rgba(255, 170, 0, 0.3);" onclick="runAgentTestSuite()">▶ Tests</button>
+          <!-- Quick Actions -->
+          <button class="btn-primary" style="padding: 0.35rem 0.7rem; font-size: 0.75rem; background: rgba(0, 242, 254, 0.2); color: var(--accent-cyan); border: 1px solid rgba(0, 242, 254, 0.4);" onclick="saveActiveFileContent()">💾 Save</button>
+          <button class="btn-primary" style="padding: 0.35rem 0.7rem; font-size: 0.75rem; background: rgba(255, 170, 0, 0.2); color: #ffaa00; border: 1px solid rgba(255, 170, 0, 0.4);" onclick="runAgentTestSuite()">▶ Run Tests</button>
         </div>
       </div>
 
-      <!-- 3-Column Split Agent Workspace Layout -->
-      <div class="agent-workspace-grid" style="display: grid; grid-template-columns: 240px 1fr 380px; gap: 1rem; height: calc(100vh - 220px); min-height: 650px;">
+      <!-- Main Antigravity Workspace Layout (3 Panels: Left Sidebar, Main Workspace, Right Chat/Reasoning) -->
+      <div style="flex: 1; display: grid; grid-template-columns: 260px 1fr 390px; gap: 0.75rem; min-height: 0;">
         
-        <!-- Column 1: File Explorer -->
-        <div class="card" style="display: flex; flex-direction: column; padding: 0.85rem; overflow: hidden; background: rgba(10, 15, 28, 0.7);">
-          <div style="display: flex; align-items: center; justify-content: space-between; padding-bottom: 0.6rem; border-bottom: 1px solid var(--card-border); margin-bottom: 0.6rem;">
-            <span style="font-weight: 700; font-size: 0.85rem; color: var(--text-main); display: flex; align-items: center; gap: 0.35rem;">
-              📁 Workspace Files
-            </span>
-            <span id="file-tree-count" style="font-size: 0.72rem; color: var(--text-muted);">0 items</span>
+        <!-- Left Sidebar: Projects, Threads & File Tree -->
+        <div style="background: rgba(10, 15, 28, 0.9); border: 1px solid var(--card-border); border-radius: 12px; display: flex; flex-direction: column; padding: 0.75rem; overflow: hidden; gap: 0.75rem;">
+          
+          <!-- Section 1: Local Projects & Drive Location -->
+          <div style="background: rgba(0, 242, 254, 0.04); border: 1px solid rgba(0, 242, 254, 0.2); border-radius: 8px; padding: 0.6rem;">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.4rem;">
+              <span style="font-size: 0.75rem; font-weight: 700; color: var(--accent-cyan); display: flex; align-items: center; gap: 0.3rem;">
+                📁 Local Projects
+              </span>
+              <button style="padding: 0.2rem 0.45rem; font-size: 0.7rem; background: rgba(0, 242, 254, 0.2); color: var(--accent-cyan); border: 1px solid rgba(0, 242, 254, 0.4); border-radius: 4px; cursor: pointer;" onclick="promptCreateProject()">+ New</button>
+            </div>
+            <select id="agent-project-select" onchange="onProjectSelectChange(this.value)" style="width: 100%; padding: 0.35rem 0.5rem; font-size: 0.78rem; background: rgba(0,0,0,0.6); border: 1px solid rgba(0, 242, 254, 0.3); color: #fff; border-radius: 6px;">
+              <option value="">Loading Projects...</option>
+            </select>
           </div>
 
-          <div id="agent-file-tree" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 0.25rem;">
-            <div style="color: var(--text-muted); font-size: 0.8rem; padding: 0.5rem; text-align: center;">Loading workspace files...</div>
+          <!-- Section 2: Conversation Threads -->
+          <div style="background: rgba(157, 78, 221, 0.04); border: 1px solid rgba(157, 78, 221, 0.2); border-radius: 8px; padding: 0.6rem; max-height: 160px; display: flex; flex-direction: column;">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.4rem;">
+              <span style="font-size: 0.75rem; font-weight: 700; color: #d8b4fe; display: flex; align-items: center; gap: 0.3rem;">
+                💬 Chat Threads
+              </span>
+              <button style="padding: 0.2rem 0.45rem; font-size: 0.7rem; background: rgba(157, 78, 221, 0.2); color: #d8b4fe; border: 1px solid rgba(157, 78, 221, 0.4); border-radius: 4px; cursor: pointer;" onclick="createNewConversationThread()">+ Thread</button>
+            </div>
+            <select id="agent-conversation-select" onchange="onConversationSelectChange(this.value)" style="width: 100%; padding: 0.35rem 0.5rem; font-size: 0.78rem; background: rgba(0,0,0,0.6); border: 1px solid rgba(157, 78, 221, 0.3); color: #fff; border-radius: 6px;">
+              <option value="">Loading Threads...</option>
+            </select>
           </div>
+
+          <!-- Section 3: Workspace File Explorer -->
+          <div style="flex: 1; display: flex; flex-direction: column; min-height: 0; background: rgba(0,0,0,0.3); border: 1px solid var(--card-border); border-radius: 8px; padding: 0.6rem;">
+            <div style="display: flex; align-items: center; justify-content: space-between; padding-bottom: 0.4rem; border-bottom: 1px solid var(--card-border); margin-bottom: 0.4rem;">
+              <span style="font-size: 0.75rem; font-weight: 700; color: var(--text-main); display: flex; align-items: center; gap: 0.3rem;">
+                📄 File Tree Explorer
+              </span>
+              <span id="file-tree-count" style="font-size: 0.7rem; color: var(--text-muted);">0 items</span>
+            </div>
+            <div id="agent-file-tree" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 0.2rem;">
+              <div style="color: var(--text-muted); font-size: 0.78rem; padding: 0.4rem; text-align: center;">Loading file tree...</div>
+            </div>
+          </div>
+
         </div>
 
-        <!-- Column 2: Live Code Workspace & Diff Inspector -->
-        <div class="card" style="display: flex; flex-direction: column; padding: 0; overflow: hidden; background: rgba(8, 12, 22, 0.95); border-color: rgba(0, 242, 254, 0.25);">
-          <!-- Editor Header Tab Bar -->
-          <div style="background: rgba(0, 0, 0, 0.5); padding: 0.5rem 0.85rem; border-bottom: 1px solid var(--card-border); display: flex; align-items: center; justify-content: space-between;">
-            <div id="editor-active-filename" style="font-family: 'JetBrains Mono', monospace; font-size: 0.85rem; font-weight: 600; color: var(--accent-cyan); display: flex; align-items: center; gap: 0.4rem;">
+        <!-- Center Workspace: Editor, Diff & Terminal Console -->
+        <div style="background: rgba(8, 12, 22, 0.95); border: 1px solid rgba(0, 242, 254, 0.25); border-radius: 12px; display: flex; flex-direction: column; overflow: hidden; min-height: 0;">
+          
+          <!-- Workspace Header & View Mode Switcher -->
+          <div style="background: rgba(0, 0, 0, 0.6); padding: 0.5rem 0.85rem; border-bottom: 1px solid var(--card-border); display: flex; align-items: center; justify-content: space-between;">
+            <div id="editor-active-filename" style="font-family: 'JetBrains Mono', monospace; font-size: 0.82rem; font-weight: 600; color: var(--accent-cyan); display: flex; align-items: center; gap: 0.4rem;">
               📄 index.html
             </div>
-            <div style="display: flex; gap: 0.4rem;">
-              <button class="btn-primary" style="padding: 0.3rem 0.65rem; font-size: 0.75rem; background: rgba(0, 242, 254, 0.15); color: var(--accent-cyan); border: 1px solid rgba(0, 242, 254, 0.3);" onclick="saveActiveFileContent()">💾 Save File</button>
-              <button class="btn-primary" style="padding: 0.3rem 0.65rem; font-size: 0.75rem; background: rgba(255, 255, 255, 0.1); color: #fff;" onclick="toggleDiffMode()">🔍 Toggle Diff View</button>
+
+            <!-- Editor View Switcher Tabs -->
+            <div style="display: flex; background: rgba(255,255,255,0.05); padding: 2px; border-radius: 6px;">
+              <button id="btn-view-editor" class="tab-btn active" style="padding: 0.25rem 0.6rem; font-size: 0.72rem;" onclick="switchEditorTab('editor')">📄 Code Editor</button>
+              <button id="btn-view-diff" class="tab-btn" style="padding: 0.25rem 0.6rem; font-size: 0.72rem;" onclick="switchEditorTab('diff')">🔍 Diff View</button>
+              <button id="btn-view-terminal" class="tab-btn" style="padding: 0.25rem 0.6rem; font-size: 0.72rem;" onclick="switchEditorTab('terminal')">🖥️ Terminal</button>
             </div>
           </div>
 
-          <!-- Code Content Area -->
-          <div style="flex: 1; position: relative; overflow: hidden;">
-            <textarea id="agent-code-editor" style="width: 100%; height: 100%; box-sizing: border-box; background: transparent; border: none; color: #e2e8f0; font-family: 'JetBrains Mono', monospace; font-size: 0.83rem; line-height: 1.5; padding: 1rem; resize: none; outline: none;" spellcheck="false" placeholder="// Select a file from the workspace explorer to view or edit code..."></textarea>
-            <div id="agent-diff-container" style="display: none; width: 100%; height: 100%; overflow: auto; padding: 1rem; box-sizing: border-box; font-family: 'JetBrains Mono', monospace; font-size: 0.82rem; line-height: 1.5; background: #070a12;">
+          <!-- Code View Area -->
+          <div style="flex: 1; position: relative; overflow: hidden; min-height: 0;">
+            <textarea id="agent-code-editor" style="width: 100%; height: 100%; box-sizing: border-box; background: transparent; border: none; color: #e2e8f0; font-family: 'JetBrains Mono', monospace; font-size: 0.82rem; line-height: 1.5; padding: 0.85rem; resize: none; outline: none;" spellcheck="false" placeholder="// Select a file from the workspace explorer to view or edit code..."></textarea>
+            <div id="agent-diff-container" style="display: none; width: 100%; height: 100%; overflow: auto; padding: 0.85rem; box-sizing: border-box; font-family: 'JetBrains Mono', monospace; font-size: 0.82rem; line-height: 1.5; background: #070a12;">
               <pre id="agent-diff-content" style="margin: 0; color: #cbd5e1;"></pre>
             </div>
           </div>
 
           <!-- Bottom Terminal Execution Drawer -->
-          <div style="background: rgba(0, 0, 0, 0.7); border-top: 1px solid var(--card-border); padding: 0.6rem 0.85rem; max-height: 160px; overflow-y: auto;">
-            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.35rem;">
-              <span>🖥️ Terminal Output & Test Console</span>
+          <div style="background: rgba(0, 0, 0, 0.8); border-top: 1px solid var(--card-border); padding: 0.5rem 0.85rem; max-height: 150px; overflow-y: auto;">
+            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.72rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.25rem;">
+              <span>🖥️ Terminal Output & Test Execution Console</span>
               <span id="exec-status-badge" style="color: var(--accent-cyan);">Ready</span>
             </div>
-            <pre id="agent-terminal-output" style="margin: 0; font-family: 'JetBrains Mono', monospace; font-size: 0.78rem; color: #38bdf8; word-break: break-word; white-space: pre-wrap;">> Antigravity Agent Environment Initialized.</pre>
+            <pre id="agent-terminal-output" style="margin: 0; font-family: 'JetBrains Mono', monospace; font-size: 0.76rem; color: #38bdf8; word-break: break-word; white-space: pre-wrap;">> Antigravity Agent Environment Initialized.</pre>
           </div>
+
         </div>
 
-        <!-- Column 3: Agent Chat & Reasoning Panel -->
-        <div class="chat-main" style="display: flex; flex-direction: column; background: rgba(10, 15, 28, 0.85); border: 1px solid var(--card-border); border-radius: 16px; overflow: hidden;">
-          <!-- Model & Parameter Quick Bar -->
-          <div style="padding: 0.75rem 1rem; border-bottom: 1px solid var(--card-border); background: rgba(0,0,0,0.3); display: flex; flex-direction: column; gap: 0.5rem;">
-            <div style="display: flex; gap: 0.4rem; align-items: center;">
-              <select id="chat-model-select" onchange="onModelSelectChange(this.value)" style="flex: 1; padding: 0.4rem 0.6rem; font-size: 0.8rem; background: rgba(0,0,0,0.5);">
-                <option value="">Select or pull a model...</option>
-              </select>
-              <button class="btn-primary" style="padding: 0.4rem 0.6rem; font-size: 0.75rem; background: var(--accent-cyan); color: #000; font-weight: bold;" onclick="preloadCurrentModel()">⚡ Preload</button>
-              <button class="btn-danger" style="padding: 0.4rem 0.6rem; font-size: 0.75rem;" onclick="unloadActiveModel()">🧹 Unload</button>
+        <!-- Right Panel: Antigravity Agent Conversation, Reasoning & Tool Output -->
+        <div style="background: rgba(10, 15, 28, 0.95); border: 1px solid var(--card-border); border-radius: 12px; display: flex; flex-direction: column; overflow: hidden; min-height: 0;">
+          
+          <!-- Agent Bar: RAM Speed & Generation TPS -->
+          <div style="padding: 0.6rem 0.85rem; border-bottom: 1px solid var(--card-border); background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: space-between; font-size: 0.75rem;">
+            <div style="display: flex; align-items: center; gap: 0.4rem; color: var(--accent-cyan);">
+              <span>⚡ RAM Speed Cap:</span>
+              <strong id="ram-slider-val">8 GB</strong>
+              <input type="range" id="param-max-ram" min="2" max="48" step="1" value="8" style="width: 80px;" oninput="updateRamCapBadge(this.value)" onchange="onRamCapChanged(this.value)">
             </div>
-
-            <div style="display: flex; align-items: center; justify-content: space-between; font-size: 0.75rem; color: var(--accent-cyan);">
-              <span>⚡ Speed Cap: <strong id="ram-slider-val">8 GB</strong></span>
-              <input type="range" id="param-max-ram" min="2" max="48" step="1" value="8" style="width: 110px;" oninput="updateRamCapBadge(this.value)" onchange="onRamCapChanged(this.value)">
-            </div>
-            
-            <div style="display: flex; gap: 0.5rem; font-size: 0.75rem; color: var(--text-muted); justify-content: space-between;">
-              <label><input type="checkbox" id="param-websearch" style="width: auto;"> 🌐 Web</label>
-              <label><input type="checkbox" id="param-location-toggle" checked style="width: auto;"> 📍 Location</label>
-              <span id="tps-display" style="color: var(--accent-cyan); font-weight: bold;">0.0 tok/s</span>
-            </div>
-            
-            <!-- Hidden parameters kept for API mapping -->
-            <input type="hidden" id="param-temp" value="0.7">
-            <input type="hidden" id="param-tokens" value="2048">
-            <input type="hidden" id="param-location-input" value="">
-            <textarea id="param-system" style="display: none;"></textarea>
+            <span id="tps-display" style="color: var(--accent-cyan); font-weight: bold; font-family: monospace;">0.0 tok/s</span>
           </div>
 
-          <!-- Chat Messages Area -->
-          <div class="chat-messages" id="chat-messages" style="flex: 1; padding: 1rem; overflow-y: auto; display: flex; flex-direction: column; gap: 0.75rem;">
+          <!-- Hidden inputs for API compatibility -->
+          <input type="hidden" id="param-temp" value="0.7">
+          <input type="hidden" id="param-tokens" value="2048">
+          <input type="checkbox" id="param-websearch" style="display: none;">
+          <input type="checkbox" id="param-location-toggle" checked style="display: none;">
+          <input type="hidden" id="param-location-input" value="">
+          <textarea id="param-system" style="display: none;"></textarea>
+
+          <!-- Chat Stream & Reasoning Box Area -->
+          <div class="chat-messages" id="chat-messages" style="flex: 1; padding: 0.85rem; overflow-y: auto; display: flex; flex-direction: column; gap: 0.75rem; min-height: 0;">
             <div class="msg assistant">
-              <p>🤖 👋 Welcome to <strong>AirOllama Antigravity Agent</strong>!</p>
-              <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.4rem;">
-                I am your pair programmer agent on macOS. Select a workspace file on the left or type your coding instruction below to analyze, edit, and test code live!
+              <p>🤖 👋 Welcome to <strong>Google Antigravity Agent Workspace</strong>!</p>
+              <p style="font-size: 0.82rem; color: var(--text-muted); margin-top: 0.3rem;">
+                Select a local project file on the left or type your coding instruction below. I will reason step-by-step, inspect code, apply diff edits, and run tests live!
               </p>
             </div>
           </div>
 
-          <!-- Prompt Form -->
-          <form id="chat-form" class="chat-input-area" onsubmit="handleChatSubmit(event)" style="padding: 0.75rem 1rem;">
-            <input type="text" id="chat-input" placeholder="Instruct agent (e.g. 'Fix layer layout in index.html')..." autocomplete="off">
-            <button type="submit" class="btn-primary" id="btn-chat-send">Agent 🚀</button>
-            <button type="button" class="btn-danger" id="btn-chat-stop" onclick="stopGeneration()" style="display: none;">Stop 🛑</button>
-          </form>
+          <!-- Slash Commands Bar & Prompt Composer -->
+          <div style="border-top: 1px solid var(--card-border); background: rgba(0,0,0,0.5); padding: 0.6rem 0.85rem; display: flex; flex-direction: column; gap: 0.4rem;">
+            <div style="display: flex; gap: 0.35rem; font-size: 0.7rem;">
+              <button type="button" style="padding: 2px 6px; background: rgba(0, 242, 254, 0.1); color: var(--accent-cyan); border: 1px solid rgba(0, 242, 254, 0.3); border-radius: 4px; cursor: pointer;" onclick="insertSlashCommand('/goal ')">/goal</button>
+              <button type="button" style="padding: 2px 6px; background: rgba(157, 78, 221, 0.1); color: #d8b4fe; border: 1px solid rgba(157, 78, 221, 0.3); border-radius: 4px; cursor: pointer;" onclick="insertSlashCommand('/grill-me ')">/grill-me</button>
+              <button type="button" style="padding: 2px 6px; background: rgba(255, 170, 0, 0.1); color: #ffaa00; border: 1px solid rgba(255, 170, 0, 0.3); border-radius: 4px; cursor: pointer;" onclick="insertSlashCommand('/learn ')">/learn</button>
+            </div>
+
+            <form id="chat-form" style="display: flex; gap: 0.4rem;" onsubmit="handleChatSubmit(event)">
+              <input type="text" id="chat-input" placeholder="Instruct agent (e.g. '/goal Fix layer rendering')..." autocomplete="off" style="flex: 1; padding: 0.45rem 0.65rem; font-size: 0.82rem; background: rgba(0,0,0,0.6); border: 1px solid rgba(0, 242, 254, 0.3); color: #fff; border-radius: 6px;">
+              <button type="submit" class="btn-primary" id="btn-chat-send" style="padding: 0.45rem 0.85rem; font-size: 0.8rem; background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple)); color: #000; font-weight: bold;">Agent 🚀</button>
+              <button type="button" class="btn-danger" id="btn-chat-stop" onclick="stopGeneration()" style="display: none; padding: 0.45rem 0.85rem; font-size: 0.8rem;">Stop 🛑</button>
+            </form>
+          </div>
+
         </div>
 
       </div>
+
     </div>
 
     <!-- Tab 3: Models -->
@@ -1080,8 +1114,48 @@ print(response.choices[0].message.content)</div>
       if (!val) return;
       currentProjectId = parseInt(val, 10);
       currentActiveFilePath = '';
+      const pathBadge = document.getElementById('agent-active-project-path');
+      const select = document.getElementById('agent-project-select');
+      if (pathBadge && select) {
+        const text = select.options[select.selectedIndex] ? select.options[select.selectedIndex].text : 'Project';
+        pathBadge.innerText = `Active Workspace Project: ${text}`;
+      }
       await loadConversationsList(currentProjectId);
       await loadWorkspaceTree();
+    }
+
+    function switchEditorTab(tab) {
+      const editor = document.getElementById('agent-code-editor');
+      const diffContainer = document.getElementById('agent-diff-container');
+      const termOutput = document.getElementById('agent-terminal-output');
+      
+      const btnEditor = document.getElementById('btn-view-editor');
+      const btnDiff = document.getElementById('btn-view-diff');
+      const btnTerm = document.getElementById('btn-view-terminal');
+
+      [btnEditor, btnDiff, btnTerm].forEach(b => { if (b) b.classList.remove('active'); });
+
+      if (tab === 'editor') {
+        if (btnEditor) btnEditor.classList.add('active');
+        if (editor) editor.style.display = 'block';
+        if (diffContainer) diffContainer.style.display = 'none';
+      } else if (tab === 'diff') {
+        if (btnDiff) btnDiff.classList.add('active');
+        if (editor) editor.style.display = 'none';
+        if (diffContainer) diffContainer.style.display = 'block';
+        toggleDiffMode(true);
+      } else if (tab === 'terminal') {
+        if (btnTerm) btnTerm.classList.add('active');
+        if (termOutput) termOutput.scrollIntoView({ behavior: 'smooth' });
+      }
+    }
+
+    function insertSlashCommand(cmd) {
+      const input = document.getElementById('chat-input');
+      if (input) {
+        input.value = cmd;
+        input.focus();
+      }
     }
 
     async function promptCreateProject() {

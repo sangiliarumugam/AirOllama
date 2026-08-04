@@ -1,0 +1,106 @@
+<!-- Playground View Panel -->
+<div id="tab-playground" class="view-panel">
+  <div class="playground-layout">
+    <!-- Left Column: Controls Sidebar -->
+    <div class="card playground-sidebar">
+      <h3 style="margin-bottom: 1rem; font-size: 1.1rem; color: var(--accent-cyan);">⚙️ Inference Parameters</h3>
+      
+      <div class="form-group">
+        <label>Selected Model</label>
+        <div style="display: flex; gap: 0.5rem; flex-direction: column;">
+          <select id="chat-model-select" onchange="onModelSelectChange()">
+            <option value="">-- Select a Model --</option>
+          </select>
+          <div style="display: flex; gap: 0.5rem;">
+            <button class="btn-primary" style="flex: 1; font-size: 0.8rem; padding: 0.4rem;" onclick="preloadCurrentModel()">⚡ Preload</button>
+            <button class="btn-danger" style="flex: 1; font-size: 0.8rem; padding: 0.4rem;" onclick="unloadActiveModel()">🧹 Unload</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-group" style="margin-top: 1rem;">
+        <label style="display: flex; justify-content: space-between; align-items: center;">
+          <span>🌐 Web Search</span>
+          <input type="checkbox" id="param-websearch" checked style="accent-color: var(--accent-cyan); width: 16px; height: 16px; cursor: pointer;">
+        </label>
+        <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.2rem;">Fetches live web context for queries</div>
+      </div>
+
+      <div class="form-group" style="margin-top: 0.75rem;">
+        <label style="display: flex; justify-content: space-between; align-items: center;">
+          <span>📍 System Location</span>
+          <input type="checkbox" id="param-location-toggle" checked style="accent-color: var(--accent-cyan); width: 16px; height: 16px; cursor: pointer;">
+        </label>
+        <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.2rem;">Includes current city/country in prompt</div>
+      </div>
+
+      <!-- Max RAM & Speed Limit Slider -->
+      <div class="form-group" style="margin-top: 1.25rem; background: rgba(0, 242, 254, 0.04); padding: 0.85rem; border-radius: 12px; border: 1px solid rgba(0, 242, 254, 0.15);">
+        <label style="color: var(--accent-cyan); font-weight: 600; display: flex; justify-content: space-between;">
+          <span>⚡ RAM & Speed Limit:</span>
+          <span id="ram-slider-val" style="color: #ffffff; font-family: 'JetBrains Mono', monospace;">8.0 GB</span>
+        </label>
+
+        <!-- Dynamic RAM Status Info Badge -->
+        <div id="ram-model-requirement-badge" style="margin-top: 0.35rem; margin-bottom: 0.5rem; font-size: 0.75rem; padding: 0.3rem 0.5rem; border-radius: 6px; background: rgba(255, 255, 255, 0.05); color: var(--text-muted); border: 1px solid rgba(255, 255, 255, 0.1); line-height: 1.3;">
+          ℹ️ Select a model to calculate memory requirements
+        </div>
+
+        <input type="range" id="param-ram-limit" min="1.0" max="32.0" step="0.5" value="8.0" oninput="updateRamSliderDisplay(this.value)" style="width: 100%; accent-color: var(--accent-cyan); margin-top: 0.4rem; cursor: pointer;">
+
+        <!-- Quick Preset Buttons -->
+        <div style="display: flex; gap: 0.35rem; margin-top: 0.6rem;">
+          <button type="button" class="btn-preset" onclick="setRamPreset('min')" style="flex: 1; padding: 0.25rem 0.3rem; font-size: 0.7rem; background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 4px; color: #a0aec0; cursor: pointer;">Min RAM</button>
+          <button type="button" class="btn-preset" onclick="setRamPreset('balanced')" style="flex: 1; padding: 0.25rem 0.3rem; font-size: 0.7rem; background: rgba(0, 242, 254, 0.15); border: 1px solid rgba(0, 242, 254, 0.3); border-radius: 4px; color: var(--accent-cyan); cursor: pointer; font-weight: 600;">Balanced</button>
+          <button type="button" class="btn-preset" onclick="setRamPreset('max')" style="flex: 1; padding: 0.25rem 0.3rem; font-size: 0.7rem; background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 4px; color: #a0aec0; cursor: pointer;">Max Speed</button>
+        </div>
+
+        <div style="font-size: 0.73rem; color: var(--text-muted); margin-top: 0.5rem; line-height: 1.25;">
+          Controls layer memory allocation. Restricting RAM streams unused layers from disk on-demand.
+        </div>
+      </div>
+
+      <div class="form-group" style="margin-top: 1rem;">
+        <label>System Prompt</label>
+        <textarea id="param-system" rows="3" style="width: 100%; font-size: 0.8rem;" placeholder="You are a helpful AI assistant..."></textarea>
+      </div>
+
+      <div class="form-group" style="margin-top: 0.75rem;">
+        <label>Temperature (<span id="temp-val">0.7</span>)</label>
+        <input type="range" id="param-temp" min="0" max="1" step="0.05" value="0.7" oninput="document.getElementById('temp-val').innerText = this.value">
+      </div>
+
+      <div class="form-group" style="margin-top: 0.75rem;">
+        <label>Max Tokens</label>
+        <input type="number" id="param-max-tokens" value="2048" step="128" min="128" max="16384">
+      </div>
+
+      <div style="margin-top: 1rem; text-align: center;">
+        <button type="button" class="btn-secondary" style="width: 100%; font-size: 0.8rem; padding: 0.4rem;" onclick="clearChat()">🧹 Clear Conversation</button>
+      </div>
+    </div>
+
+    <!-- Right Column: Interactive Chat Interface -->
+    <div class="card playground-chat">
+      <div class="chat-header">
+        <div style="display: flex; align-items: center; gap: 0.6rem;">
+          <span style="font-size: 1.2rem;">💬</span>
+          <span style="font-weight: 600; color: #ffffff;" id="chat-active-model-title">No Model Selected</span>
+        </div>
+        <div class="tps-badge" id="chat-tps-badge">0.0 tok/s</div>
+      </div>
+
+      <div class="chat-messages" id="chat-messages">
+        <div class="msg assistant">
+          <p>👋 Hello! I am <strong>AirOllama</strong>. Select a model and send a message to start streaming layer-by-layer inference.</p>
+        </div>
+      </div>
+
+      <form id="chat-form" class="chat-input-area" onsubmit="handleChatSubmit(event)">
+        <input type="text" id="chat-input" placeholder="Ask a question..." autocomplete="off">
+        <button type="submit" class="btn-primary" id="btn-chat-send">Send 🚀</button>
+        <button type="button" class="btn-danger" id="btn-chat-stop" onclick="stopGeneration()" style="display: none;">🛑 Stop</button>
+      </form>
+    </div>
+  </div>
+</div>

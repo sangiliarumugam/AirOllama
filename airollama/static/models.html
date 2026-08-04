@@ -1,0 +1,81 @@
+<!-- Models & Pull Manager View Panel -->
+<div id="tab-models" class="view-panel">
+  <div class="card">
+    <h3>Pull Model (Multi-Threaded Parallel Download)</h3>
+    <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0.25rem;">
+      Enter any standard Ollama model tag (e.g. <code>llama3.2</code>, <code>qwen2.5:0.5b</code>, <code>tinyllama</code>, <code>mistral</code>, <code>gemma2:2b</code>) or HuggingFace repo ID.
+    </p>
+    <div style="display: flex; gap: 0.75rem; margin-top: 1rem; align-items: center; flex-wrap: wrap;">
+      <select id="pull-source-select" style="min-width: 210px; background: rgba(0, 0, 0, 0.6); border: 1px solid var(--accent-cyan);">
+        <option value="auto">⚡ Auto (Smart Fallback)</option>
+        <option value="ollama">📦 Ollama Registry (registry.ollama.ai)</option>
+        <option value="huggingface">🤗 Hugging Face Hub (huggingface.co)</option>
+      </select>
+      <input type="text" id="pull-model-input" placeholder="e.g. llama3.2 or gemma4:31b-mlx or unsloth/Llama-3.2-1B-Instruct" style="flex: 1; min-width: 250px;">
+      <button class="btn-primary" id="btn-pull" onclick="pullModel()">Pull Model</button>
+      <button class="btn-danger" id="btn-cancel-pull" onclick="cancelPull()" style="display: none;">Cancel Pull</button>
+    </div>
+
+    <div id="pull-status" style="margin-top: 0.75rem; color: var(--accent-cyan); font-size: 0.9rem;"></div>
+
+    <!-- Global Download Progress & LED Panel Card -->
+    <div id="global-download-container" style="display: none; margin-top: 1.25rem; background: rgba(10, 15, 30, 0.75); padding: 1.5rem; border-radius: 16px; border: 1px solid rgba(0, 242, 254, 0.3); backdrop-filter: blur(12px); box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);">
+      
+      <!-- Header with Speed & Progress Stats -->
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; flex-wrap: wrap; gap: 0.5rem;">
+        <h4 style="margin: 0; font-size: 1rem; color: var(--accent-cyan); display: flex; align-items: center; gap: 0.5rem;">
+          <span>🚀 Overall Download Progress</span>
+        </h4>
+        
+        <div style="display: flex; align-items: center; gap: 1.25rem;">
+          <!-- Real-Time Speed Monitor -->
+          <div style="background: rgba(0, 242, 254, 0.1); border: 1px solid rgba(0, 242, 254, 0.3); padding: 0.35rem 0.85rem; border-radius: 8px; font-family: 'JetBrains Mono', monospace; font-size: 0.85rem; color: var(--accent-cyan); font-weight: 600; display: flex; align-items: center; gap: 0.4rem;">
+            <span>⚡ Speed:</span>
+            <span id="download-speed-value" style="color: #00f2fe; font-weight: 700;">0.0 MB/s</span>
+          </div>
+
+          <!-- Size and Percent Stats -->
+          <span id="global-download-stats" style="font-family: 'JetBrains Mono', monospace; font-size: 0.9rem; color: #ffffff; font-weight: 600;">0.00 GB / 0.00 GB (0%)</span>
+        </div>
+      </div>
+
+      <!-- Overall Progress Bar -->
+      <div class="progress-bar-bg" style="height: 14px; border-radius: 7px; background: rgba(255, 255, 255, 0.08); overflow: hidden; margin-bottom: 1.25rem; border: 1px solid rgba(255, 255, 255, 0.1);">
+        <div id="global-progress-fill" class="progress-bar-fill" style="width: 0%; height: 100%; border-radius: 7px; background: linear-gradient(90deg, #00f2fe, #4facfe, #00e676); transition: width 0.3s ease; box-shadow: 0 0 12px rgba(0, 242, 254, 0.6);"></div>
+      </div>
+
+      <!-- LED Matrix Panel for Active & Completed Threads -->
+      <div style="background: rgba(0, 0, 0, 0.45); padding: 1rem 1.25rem; border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.08);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; flex-wrap: wrap; gap: 0.5rem;">
+          <div style="font-size: 0.85rem; font-weight: 600; display: flex; align-items: center; gap: 1.25rem;">
+            <span style="display: flex; align-items: center; gap: 0.4rem;">
+              <span class="led-dot active" style="width: 10px; height: 10px; display: inline-block;"></span>
+              <span style="color: #ffffff;">Active Threads:</span>
+              <span id="led-active-count" style="color: #ffb300; font-weight: 700; font-family: 'JetBrains Mono', monospace; font-size: 0.95rem;">0</span>
+            </span>
+
+            <span style="display: flex; align-items: center; gap: 0.4rem;">
+              <span class="led-dot completed" style="width: 10px; height: 10px; display: inline-block;"></span>
+              <span style="color: #ffffff;">Completed Threads:</span>
+              <span id="led-completed-count" style="color: #00e676; font-weight: 700; font-family: 'JetBrains Mono', monospace; font-size: 0.95rem;">0</span>
+            </span>
+          </div>
+
+          <span id="led-total-count" style="font-size: 0.8rem; color: var(--text-muted); font-family: 'JetBrains Mono', monospace;">Total Worker Streams: 0</span>
+        </div>
+
+        <!-- LED Dot Matrix Grid -->
+        <div id="led-dot-matrix" style="display: flex; flex-wrap: wrap; gap: 6px; max-height: 140px; overflow-y: auto; padding: 4px;">
+          <!-- Dynamic LED Dots -->
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <h3 style="margin-top: 2rem;">Cached Models</h3>
+  <div class="models-list" id="models-list">
+    <!-- Dynamic models -->
+  </div>
+</div>

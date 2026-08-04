@@ -616,365 +616,67 @@
     </div>
   </header>
 
-  <main>
-    <!-- Tab 1: Dashboard -->
-    <div id="tab-dashboard" class="view-panel active">
-      <!-- Top Row: Active Model & Active Layer -->
-      <div class="grid-top-row" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.25rem; margin-bottom: 1.25rem;">
-        <div class="card">
-          <div class="stat-label">Active Model</div>
-          <div class="stat-val" id="stat-model" style="font-size: 1.4rem; word-break: break-all; overflow-wrap: anywhere; line-height: 1.25;">None</div>
-        </div>
-        <div class="card">
-          <div class="stat-label">Active Layer</div>
-          <div class="stat-val" id="stat-layer" style="font-size: 1.15rem; word-break: break-word;">Idle</div>
-        </div>
-      </div>
-
-      <!-- Bottom Row: Memory & Offload Metrics -->
-      <div class="grid-stats">
-        <div class="card">
-          <div class="stat-label">Model RAM</div>
-          <div class="stat-val" id="stat-model-ram">0.00 <small>GB</small></div>
-        </div>
-        <div class="card">
-          <div class="stat-label">Available System RAM</div>
-          <div class="stat-val" id="stat-sysram">0.0 / 0.0 <small>GB</small></div>
-        </div>
-        <div class="card">
-          <div class="stat-label">VRAM / Metal Memory</div>
-          <div class="stat-val" id="stat-vram">0.00 <small>GB</small></div>
-        </div>
-        <div class="card" id="card-offload" style="border-color: rgba(255, 170, 0, 0.3);">
-          <div class="stat-label">Disk Offload Status</div>
-          <div class="stat-val" id="stat-offload" style="font-size: 1.05rem;">Inactive</div>
-        </div>
-      </div>
-
-      <!-- Live Disk Offload Activity Monitor Card -->
-      <div class="card" style="margin-top: 1.25rem; border-color: rgba(255, 170, 0, 0.3); background: rgba(255, 170, 0, 0.03);">
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-          <h3 style="color: #ffaa00; font-size: 1.05rem; display: flex; align-items: center; gap: 0.5rem; margin: 0;">
-            💾 Disk Offload & Memory Paging Activity
-          </h3>
-          <span id="offload-badge" style="background: rgba(0, 242, 254, 0.1); color: var(--accent-cyan); border: 1px solid rgba(0, 242, 254, 0.3); padding: 0.25rem 0.6rem; border-radius: 6px; font-size: 0.78rem; font-weight: 600;">
-            ⚡ 100% RAM / GPU Active
-          </span>
-        </div>
-        <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 0.35rem;">
-          Dynamic weight paging: Layers beyond your RAM/VRAM capacity are streamed directly from disk storage on-demand.
-        </p>
-        
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-top: 1rem;">
-          <div style="background: rgba(0,0,0,0.3); padding: 0.75rem 1rem; border-radius: 8px; border: 1px solid var(--card-border);">
-            <div style="font-size: 0.75rem; color: var(--text-secondary); font-weight: 600;">RAM Active Layers</div>
-            <div id="offload-ram-layers" style="font-size: 1.2rem; font-weight: bold; color: var(--accent-cyan); font-family: monospace; margin-top: 0.2rem;">
-              0 / 0 layers
-            </div>
-          </div>
-          <div style="background: rgba(0,0,0,0.3); padding: 0.75rem 1rem; border-radius: 8px; border: 1px solid var(--card-border);">
-            <div style="font-size: 0.75rem; color: var(--text-secondary); font-weight: 600;">Disk Offloaded Layers</div>
-            <div id="offload-disk-layers" style="font-size: 1.2rem; font-weight: bold; color: #ffaa00; font-family: monospace; margin-top: 0.2rem;">
-              0 / 0 layers
-            </div>
-          </div>
-          <div style="background: rgba(0,0,0,0.3); padding: 0.75rem 1rem; border-radius: 8px; border: 1px solid var(--card-border);">
-            <div style="font-size: 0.75rem; color: var(--text-secondary); font-weight: 600;">Disk Offload Cache Size</div>
-            <div id="offload-disk-size" style="font-size: 1.2rem; font-weight: bold; color: var(--text-main); font-family: monospace; margin-top: 0.2rem;">
-              0.0 GB
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="card layer-monitor-card" style="margin-top: 1.25rem;">
-        <h3>Layer-by-Layer On-Demand Stream Visualizer</h3>
-        <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0.25rem;">
-          Real-time visualization of model weights loaded into memory on-demand per step (AirLLM style).
-        </p>
-        <div class="layer-bar-container" id="layer-boxes">
-          <div class="layer-box">Ready</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Tab 2: Playground -->
-    <div id="tab-playground" class="view-panel">
-      <div class="chat-container">
-        <div class="chat-sidebar">
-          <h3>Parameters</h3>
-          <div class="form-group">
-            <label>Model</label>
-            <select id="chat-model-select" onchange="onModelSelectChange(this.value)">
-              <option value="">Select or pull a model...</option>
-            </select>
-
-            <div style="display: flex; gap: 0.35rem; margin-top: 0.5rem;">
-              <button class="btn-primary" style="flex: 1; padding: 0.45rem 0.2rem; font-size: 0.78rem; background: var(--accent-cyan); color: #000; font-weight: bold;" onclick="preloadCurrentModel()">⚡ Preload</button>
-              <button class="btn-danger" style="flex: 1; padding: 0.45rem 0.2rem; font-size: 0.78rem;" onclick="unloadActiveModel()">🧹 Unload</button>
-              <button class="btn-primary" style="flex: 1; padding: 0.45rem 0.2rem; font-size: 0.78rem; background: rgba(255, 255, 255, 0.1); color: #fff;" onclick="clearChat()">🆕 Clear</button>
-            </div>
-          </div>
-
-          <div class="form-group" style="background: rgba(0, 242, 254, 0.05); padding: 0.75rem; border-radius: 8px; border: 1px solid rgba(0, 242, 254, 0.2); margin-top: 1rem;">
-            <label style="display: flex; align-items: center; justify-content: space-between; cursor: pointer; color: var(--accent-cyan); font-weight: 600;">
-              <span>🌐 Live Web Search</span>
-              <input type="checkbox" id="param-websearch" style="width: auto;">
-            </label>
-          </div>
-
-          <div class="form-group" style="background: rgba(157, 78, 221, 0.05); padding: 0.75rem; border-radius: 8px; border: 1px solid rgba(157, 78, 221, 0.2);">
-            <label style="display: flex; align-items: center; justify-content: space-between; cursor: pointer; color: #d8b4fe; font-weight: 600;">
-              <span>📍 System Location</span>
-              <input type="checkbox" id="param-location-toggle" checked style="width: auto;">
-            </label>
-            <input type="text" id="param-location-input" placeholder="Detecting location..." style="margin-top: 0.4rem; font-size: 0.8rem; background: rgba(0, 0, 0, 0.4); border: 1px solid rgba(157, 78, 221, 0.3); color: #fff; border-radius: 6px; padding: 0.4rem; width: 100%;">
-          </div>
-
-          <div class="form-group" id="ram-cap-container" style="background: rgba(0, 242, 254, 0.05); padding: 0.85rem; border-radius: 12px; border: 1px solid rgba(0, 242, 254, 0.3); transition: opacity 0.3s ease;">
-            <label style="display: flex; align-items: center; justify-content: space-between; color: var(--accent-cyan); font-weight: 600;">
-              <span>⚡ RAM & Speed Cap</span>
-              <span id="ram-slider-val" style="font-size: 0.8rem; color: #fff; background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple)); padding: 3px 10px; border-radius: 6px; font-weight: bold;">8 GB</span>
-            </label>
-            <input type="range" id="param-max-ram" min="2" max="48" step="1" value="8" style="width: 100%; margin-top: 0.6rem;" oninput="updateRamCapBadge(this.value)" onchange="onRamCapChanged(this.value)">
-
-            <div id="ram-speed-preset-info" style="font-size: 0.78rem; color: var(--accent-cyan); margin-top: 0.4rem; font-weight: 500;">
-              🚀 Higher RAM = Faster output response (More layers active in GPU VRAM)
-            </div>
-            
-            <div id="ram-preset-buttons" style="display: flex; gap: 0.35rem; margin-top: 0.6rem;">
-              <button type="button" class="btn-primary" style="flex: 1; padding: 0.35rem 0.2rem; font-size: 0.72rem; background: rgba(255, 170, 0, 0.15); color: #ffaa00; border: 1px solid rgba(255, 170, 0, 0.3);" onclick="setRamPreset('min')">🐢 Min RAM</button>
-              <button type="button" class="btn-primary" style="flex: 1; padding: 0.35rem 0.2rem; font-size: 0.72rem; background: rgba(157, 78, 221, 0.2); color: #d8b4fe; border: 1px solid rgba(157, 78, 221, 0.4);" onclick="setRamPreset('balanced')">⚡ Balanced</button>
-              <button type="button" class="btn-primary" style="flex: 1; padding: 0.35rem 0.2rem; font-size: 0.72rem; background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple)); color: #000; font-weight: bold;" onclick="setRamPreset('max')">🚀 Max Speed</button>
-            </div>
-
-            <!-- Token Per Second Live Metric Card -->
-            <div id="tok-speed-card" style="margin-top: 0.75rem; padding: 0.55rem 0.75rem; background: rgba(0, 242, 254, 0.06); border: 1px solid rgba(0, 242, 254, 0.2); border-radius: 8px; display: flex; align-items: center; justify-content: space-between;">
-              <div style="font-size: 0.76rem; color: var(--text-secondary); font-weight: 600; display: flex; align-items: center; gap: 0.3rem;">
-                ⚡ Generation Speed:
-              </div>
-              <div id="tps-display" style="font-size: 0.95rem; font-weight: 800; color: var(--accent-cyan); font-family: monospace;">
-                0.0 tok/s
-              </div>
-            </div>
-          </div>
-
-          <div class="form-group">
-            <label>Temperature</label>
-            <input type="number" id="param-temp" value="0.7" step="0.1" min="0" max="2">
-          </div>
-          <div class="form-group">
-            <label>Max Output Tokens</label>
-            <input type="number" id="param-tokens" value="2048" step="128" min="64" max="4096">
-          </div>
-
-          <div class="form-group">
-            <label>System Prompt</label>
-            <textarea id="param-system" rows="3" placeholder="You are a helpful AI assistant..."></textarea>
-          </div>
-        </div>
-
-        <div class="chat-main">
-          <div class="chat-messages" id="chat-messages">
-            <div class="msg assistant">
-              <p>👋 Hello! I am <strong>AirOllama</strong>. Select a model and send a message to start streaming layer-by-layer inference.</p>
-            </div>
-          </div>
-          <form id="chat-form" class="chat-input-area" onsubmit="handleChatSubmit(event)">
-            <input type="text" id="chat-input" placeholder="Ask a question..." autocomplete="off">
-            <button type="submit" class="btn-primary" id="btn-chat-send">Send 🚀</button>
-            <button type="button" class="btn-danger" id="btn-chat-stop" onclick="stopGeneration()" style="display: none;">🛑 Stop</button>
-          </form>
-        </div>
-      </div>
-    </div>
-
-    <!-- Tab 3: Models -->
-    <div id="tab-models" class="view-panel">
-      <div class="card">
-        <h3>Pull Model (Multi-Threaded Parallel Download)</h3>
-        <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0.25rem;">
-          Enter any standard Ollama model tag (e.g. <code>llama3.2</code>, <code>qwen2.5:0.5b</code>, <code>tinyllama</code>, <code>mistral</code>, <code>gemma2:2b</code>) or HuggingFace repo ID.
-        </p>
-        <div style="display: flex; gap: 0.75rem; margin-top: 1rem; align-items: center; flex-wrap: wrap;">
-          <select id="pull-source-select" style="min-width: 210px; background: rgba(0, 0, 0, 0.6); border: 1px solid var(--accent-cyan);">
-            <option value="auto">⚡ Auto (Smart Fallback)</option>
-            <option value="ollama">📦 Ollama Registry (registry.ollama.ai)</option>
-            <option value="huggingface">🤗 Hugging Face Hub (huggingface.co)</option>
-          </select>
-          <input type="text" id="pull-model-input" placeholder="e.g. llama3.2 or gemma4:31b-mlx or unsloth/Llama-3.2-1B-Instruct" style="flex: 1; min-width: 250px;">
-          <button class="btn-primary" id="btn-pull" onclick="pullModel()">Pull Model</button>
-          <button class="btn-danger" id="btn-cancel-pull" onclick="cancelPull()" style="display: none;">Cancel Pull</button>
-        </div>
-
-        <div id="pull-status" style="margin-top: 0.75rem; color: var(--accent-cyan); font-size: 0.9rem;"></div>
-
-        <!-- Global Download Progress & LED Panel Card -->
-        <div id="global-download-container" style="display: none; margin-top: 1.25rem; background: rgba(10, 15, 30, 0.75); padding: 1.5rem; border-radius: 16px; border: 1px solid rgba(0, 242, 254, 0.3); backdrop-filter: blur(12px); box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);">
-          
-          <!-- Header with Speed & Progress Stats -->
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; flex-wrap: wrap; gap: 0.5rem;">
-            <h4 style="margin: 0; font-size: 1rem; color: var(--accent-cyan); display: flex; align-items: center; gap: 0.5rem;">
-              <span>🚀 Overall Download Progress</span>
-            </h4>
-            
-            <div style="display: flex; align-items: center; gap: 1.25rem;">
-              <!-- Real-Time Speed Monitor -->
-              <div style="background: rgba(0, 242, 254, 0.1); border: 1px solid rgba(0, 242, 254, 0.3); padding: 0.35rem 0.85rem; border-radius: 8px; font-family: 'JetBrains Mono', monospace; font-size: 0.85rem; color: var(--accent-cyan); font-weight: 600; display: flex; align-items: center; gap: 0.4rem;">
-                <span>⚡ Speed:</span>
-                <span id="download-speed-value" style="color: #00f2fe; font-weight: 700;">0.0 MB/s</span>
-              </div>
-
-              <!-- Size and Percent Stats -->
-              <span id="global-download-stats" style="font-family: 'JetBrains Mono', monospace; font-size: 0.9rem; color: #ffffff; font-weight: 600;">0.00 GB / 0.00 GB (0%)</span>
-            </div>
-          </div>
-
-          <!-- Overall Progress Bar -->
-          <div class="progress-bar-bg" style="height: 14px; border-radius: 7px; background: rgba(255, 255, 255, 0.08); overflow: hidden; margin-bottom: 1.25rem; border: 1px solid rgba(255, 255, 255, 0.1);">
-            <div id="global-progress-fill" class="progress-bar-fill" style="width: 0%; height: 100%; border-radius: 7px; background: linear-gradient(90deg, #00f2fe, #4facfe, #00e676); transition: width 0.3s ease; box-shadow: 0 0 12px rgba(0, 242, 254, 0.6);"></div>
-          </div>
-
-          <!-- LED Matrix Panel for Active & Completed Threads -->
-          <div style="background: rgba(0, 0, 0, 0.45); padding: 1rem 1.25rem; border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.08);">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; flex-wrap: wrap; gap: 0.5rem;">
-              <div style="font-size: 0.85rem; font-weight: 600; display: flex; align-items: center; gap: 1.25rem;">
-                <span style="display: flex; align-items: center; gap: 0.4rem;">
-                  <span class="led-dot active" style="width: 10px; height: 10px; display: inline-block;"></span>
-                  <span style="color: #ffffff;">Active Threads:</span>
-                  <span id="led-active-count" style="color: #ffb300; font-weight: 700; font-family: 'JetBrains Mono', monospace; font-size: 0.95rem;">0</span>
-                </span>
-
-                <span style="display: flex; align-items: center; gap: 0.4rem;">
-                  <span class="led-dot completed" style="width: 10px; height: 10px; display: inline-block;"></span>
-                  <span style="color: #ffffff;">Completed Threads:</span>
-                  <span id="led-completed-count" style="color: #00e676; font-weight: 700; font-family: 'JetBrains Mono', monospace; font-size: 0.95rem;">0</span>
-                </span>
-
-              </div>
-
-              <span id="led-total-count" style="font-size: 0.8rem; color: var(--text-muted); font-family: 'JetBrains Mono', monospace;">Total Worker Streams: 0</span>
-            </div>
-
-            <!-- LED Dot Matrix Grid -->
-            <div id="led-dot-matrix" style="display: flex; flex-wrap: wrap; gap: 6px; max-height: 140px; overflow-y: auto; padding: 4px;">
-              <!-- Dynamic LED Dots -->
-            </div>
-          </div>
-
-        </div>
-
-      </div>
-
-
-      <h3 style="margin-top: 2rem;">Cached Models</h3>
-      <div class="models-list" id="models-list">
-        <!-- Dynamic models -->
-      </div>
-    </div>
-
-    <!-- Tab 4: Settings -->
-    <div id="tab-settings" class="view-panel">
-      <div class="card">
-        <h3>Settings & Model Storage Repository</h3>
-        <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0.25rem;">
-          Configure model storage directory path and Hugging Face API User Access Tokens on your Mac.
-        </p>
-        
-        <div class="form-group" style="margin-top: 1.25rem;">
-          <label>Model Storage Directory Path</label>
-          <div style="display: flex; gap: 0.75rem;">
-            <input type="text" id="settings-models-dir" placeholder="/path/to/models/directory" style="flex: 1; font-family: 'JetBrains Mono', monospace;">
-            <button class="btn-primary" onclick="saveSettings()">Save Directory</button>
-          </div>
-          <span id="settings-status" style="font-size: 0.85rem; color: var(--success); margin-top: 0.25rem;"></span>
-        </div>
-
-        <div class="form-group" style="margin-top: 1.25rem; background: rgba(255, 170, 0, 0.04); padding: 1rem; border-radius: 12px; border: 1px solid rgba(255, 170, 0, 0.2);">
-          <label style="color: #ffaa00; font-weight: 600;">💾 Disk Offload Cache Directory Path</label>
-          <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem; margin-bottom: 0.5rem;">
-            Custom directory path where layer streaming weight cache files are stored on disk.
-          </div>
-          <div style="display: flex; gap: 0.75rem;">
-            <input type="text" id="settings-offload-dir" placeholder="/path/to/offload/cache" style="flex: 1; font-family: 'JetBrains Mono', monospace;">
-            <button class="btn-primary" style="background: rgba(255, 170, 0, 0.2); color: #ffaa00; border: 1px solid rgba(255, 170, 0, 0.4);" onclick="saveOffloadDir()">Save Offload Path</button>
-          </div>
-          <span id="offload-dir-status" style="font-size: 0.85rem; color: var(--success); margin-top: 0.25rem;"></span>
-        </div>
-
-        <div class="form-group" style="margin-top: 1.5rem; background: rgba(0, 242, 254, 0.04); padding: 1rem; border-radius: 12px; border: 1px solid rgba(0, 242, 254, 0.15);">
-          <label style="color: var(--accent-cyan); font-weight: 600;">🤗 Hugging Face User Access Token (HF_TOKEN)</label>
-          <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem; margin-bottom: 0.5rem;">
-            Unlocks maximum CDN speed bandwidth and gated repositories (e.g. Meta Llama, Gemma) when pulling models from Hugging Face.
-          </div>
-          <div style="display: flex; gap: 0.75rem;">
-            <input type="password" id="settings-hf-token" placeholder="hf_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" style="flex: 1; font-family: 'JetBrains Mono', monospace;">
-            <button class="btn-primary" onclick="saveHFToken()">Save Token</button>
-            <button class="btn-danger" onclick="clearHFToken()" id="btn-clear-hf-token" style="display: none;">Clear Token</button>
-          </div>
-          <span id="hf-token-status" style="font-size: 0.85rem; color: var(--success); margin-top: 0.25rem;"></span>
-        </div>
-
-        <div style="display: flex; gap: 1rem; margin-top: 1.5rem;">
-          <div style="flex: 1; background: rgba(255, 255, 255, 0.03); padding: 1rem; border-radius: 12px; border: 1px solid var(--card-border);">
-            <div style="font-size: 0.85rem; color: var(--text-muted);">Active Execution Device</div>
-            <div style="font-size: 1.1rem; font-weight: 600; color: var(--accent-cyan); margin-top: 0.25rem;" id="settings-device">Loading...</div>
-          </div>
-          <div style="flex: 2; background: rgba(255, 255, 255, 0.03); padding: 1rem; border-radius: 12px; border: 1px solid var(--card-border);">
-            <div style="font-size: 0.85rem; color: var(--text-muted);">Persistent Config File</div>
-            <div style="font-size: 0.9rem; font-weight: 500; color: var(--accent-cyan); font-family: 'JetBrains Mono', monospace; margin-top: 0.25rem;" id="settings-config-path">~/.airollama/config.json</div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-
-
-    <!-- Tab 5: API Docs -->
-    <div id="tab-api" class="view-panel">
-      <div class="card">
-        <h3>Ollama API Endpoint Compatibility (Port 11211)</h3>
-        <p style="color: var(--text-muted); margin-top: 0.5rem;">
-          AirOllama runs on <strong>http://localhost:11211</strong> and is compatible with Ollama SDKs and OpenAI tools.
-        </p>
-
-        <h4 style="margin-top: 1.5rem;">cURL Chat Completion</h4>
-        <div class="code-block">curl http://localhost:11211/api/chat -d '{
-  "model": "TinyLlama/TinyLlama-1.1B-Chat-v1.0",
-  "messages": [{"role": "user", "content": "Explain gravity in 2 sentences"}],
-  "stream": true
-}'</div>
-
-        <h4 style="margin-top: 1.5rem;">OpenAI Python SDK</h4>
-        <div class="code-block">from openai import OpenAI
-
-client = OpenAI(base_url="http://localhost:11211/v1", api_key="not-needed")
-response = client.chat.completions.create(
-    model="TinyLlama/TinyLlama-1.1B-Chat-v1.0",
-    messages=[{"role": "user", "content": "Hello!"}]
-)
-print(response.choices[0].message.content)</div>
-      </div>
-    </div>
+  <main id="main-content">
+    <!-- Modular Page Views (Loaded from dashboard.html, playground.html, models.html, settings.html, apidocs.html) -->
+    <div id="tab-dashboard" class="view-panel active"></div>
+    <div id="tab-playground" class="view-panel"></div>
+    <div id="tab-models" class="view-panel"></div>
+    <div id="tab-settings" class="view-panel"></div>
+    <div id="tab-api" class="view-panel"></div>
   </main>
 
   <script>
     let activePullController = null;
     let activePullModelName = null;
 
-    document.addEventListener('DOMContentLoaded', () => {
-      if (navigator.userAgent.includes('AirOllamaMac') || navigator.userAgent.includes('Electron')) {
-        document.body.classList.add('is-native-mac');
-      }
+    async function loadModularPages() {
+      const pageMap = {
+        'tab-dashboard': '/static/dashboard.html',
+        'tab-playground': '/static/playground.html',
+        'tab-models': '/static/models.html',
+        'tab-settings': '/static/settings.html',
+        'tab-api': '/static/apidocs.html'
+      };
+
+      await Promise.all(Object.entries(pageMap).map(async ([id, url]) => {
+        try {
+          const res = await fetch(url);
+          if (res.ok) {
+            let html = await res.text();
+            // Unwrap root tab div if present in modular file
+            const temp = document.createElement('div');
+            temp.innerHTML = html.trim();
+            const innerTab = temp.querySelector('.view-panel');
+            if (innerTab) {
+              html = innerTab.innerHTML;
+            }
+            const el = document.getElementById(id);
+            if (el) el.innerHTML = html;
+          }
+        } catch (e) {
+          console.error(`Failed to load page template ${url}`, e);
+        }
+      }));
+
       const chatInput = document.getElementById('chat-input');
       if (chatInput) {
         chatInput.addEventListener('keydown', (e) => {
           if (e.key === 'Enter') {
             e.preventDefault();
-            sendMessage();
+            handleChatSubmit(e);
           }
         });
       }
+
+      loadModels();
+      loadConfig();
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      if (navigator.userAgent.includes('AirOllamaMac') || navigator.userAgent.includes('Electron')) {
+        document.body.classList.add('is-native-mac');
+      }
+      loadModularPages();
     });
 
     function switchTab(name) {
@@ -2218,8 +1920,6 @@ print(response.choices[0].message.content)</div>
 
 
     setInterval(updateStats, 1000);
-    loadModels();
-    loadConfig();
   </script>
 </body>
 </html>

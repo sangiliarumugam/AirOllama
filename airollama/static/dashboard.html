@@ -1,0 +1,80 @@
+<!-- Dashboard View Panel -->
+<div id="tab-dashboard" class="view-panel active">
+  <!-- Top Row: Active Model & Active Layer -->
+  <div class="grid-top-row" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.25rem; margin-bottom: 1.25rem;">
+    <div class="card">
+      <div class="stat-label">Active Model</div>
+      <div class="stat-val" id="stat-model" style="font-size: 1.4rem; word-break: break-all; overflow-wrap: anywhere; line-height: 1.25;">None</div>
+    </div>
+    <div class="card">
+      <div class="stat-label">Active Layer</div>
+      <div class="stat-val" id="stat-layer" style="font-size: 1.15rem; word-break: break-word;">Idle</div>
+    </div>
+  </div>
+
+  <!-- Bottom Row: Memory & Offload Metrics -->
+  <div class="grid-stats">
+    <div class="card">
+      <div class="stat-label">Model RAM</div>
+      <div class="stat-val" id="stat-model-ram">0.00 <small>GB</small></div>
+    </div>
+    <div class="card">
+      <div class="stat-label">Available System RAM</div>
+      <div class="stat-val" id="stat-sysram">0.0 / 0.0 <small>GB</small></div>
+    </div>
+    <div class="card">
+      <div class="stat-label">VRAM / Metal Memory</div>
+      <div class="stat-val" id="stat-vram">0.00 <small>GB</small></div>
+    </div>
+    <div class="card" id="card-offload" style="border-color: rgba(255, 170, 0, 0.3);">
+      <div class="stat-label">Disk Offload Status</div>
+      <div class="stat-val" id="stat-offload" style="font-size: 1.05rem;">Inactive</div>
+    </div>
+  </div>
+
+  <!-- Live Disk Offload Activity Monitor Card -->
+  <div class="card" style="margin-top: 1.25rem; border-color: rgba(255, 170, 0, 0.3); background: rgba(255, 170, 0, 0.03);">
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+      <h3 style="color: #ffaa00; font-size: 1.05rem; display: flex; align-items: center; gap: 0.5rem; margin: 0;">
+        💾 Disk Offload & Memory Paging Activity
+      </h3>
+      <span id="offload-badge" style="background: rgba(0, 242, 254, 0.1); color: var(--accent-cyan); border: 1px solid rgba(0, 242, 254, 0.3); padding: 0.25rem 0.6rem; border-radius: 6px; font-size: 0.78rem; font-weight: 600;">
+        ⚡ 100% RAM / GPU Active
+      </span>
+    </div>
+    <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 0.35rem;">
+      Dynamic weight paging: Layers beyond your RAM/VRAM capacity are streamed directly from disk storage on-demand.
+    </p>
+    
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-top: 1rem;">
+      <div style="background: rgba(0,0,0,0.3); padding: 0.75rem 1rem; border-radius: 8px; border: 1px solid var(--card-border);">
+        <div style="font-size: 0.75rem; color: var(--text-secondary); font-weight: 600;">RAM Active Layers</div>
+        <div id="offload-ram-layers" style="font-size: 1.2rem; font-weight: bold; color: var(--accent-cyan); font-family: monospace; margin-top: 0.2rem;">
+          0 / 0 layers
+        </div>
+      </div>
+      <div style="background: rgba(0,0,0,0.3); padding: 0.75rem 1rem; border-radius: 8px; border: 1px solid var(--card-border);">
+        <div style="font-size: 0.75rem; color: var(--text-secondary); font-weight: 600;">Disk Offloaded Layers</div>
+        <div id="offload-disk-layers" style="font-size: 1.2rem; font-weight: bold; color: #ffaa00; font-family: monospace; margin-top: 0.2rem;">
+          0 / 0 layers
+        </div>
+      </div>
+      <div style="background: rgba(0,0,0,0.3); padding: 0.75rem 1rem; border-radius: 8px; border: 1px solid var(--card-border);">
+        <div style="font-size: 0.75rem; color: var(--text-secondary); font-weight: 600;">Disk Offload Cache Size</div>
+        <div id="offload-disk-size" style="font-size: 1.2rem; font-weight: bold; color: var(--text-main); font-family: monospace; margin-top: 0.2rem;">
+          0.0 GB
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card layer-monitor-card" style="margin-top: 1.25rem;">
+    <h3>Layer-by-Layer On-Demand Stream Visualizer</h3>
+    <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0.25rem;">
+      Real-time visualization of model weights loaded into memory on-demand per step (AirLLM style).
+    </p>
+    <div class="layer-bar-container" id="layer-boxes">
+      <div class="layer-box">Ready</div>
+    </div>
+  </div>
+</div>

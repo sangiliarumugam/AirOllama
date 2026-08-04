@@ -1,0 +1,26 @@
+<!-- API Documentation View Panel -->
+<div id="tab-api" class="view-panel">
+  <div class="card">
+    <h3>Ollama API Endpoint Compatibility (Port 11211)</h3>
+    <p style="color: var(--text-muted); margin-top: 0.5rem;">
+      AirOllama runs on <strong>http://localhost:11211</strong> and is compatible with Ollama SDKs and OpenAI tools.
+    </p>
+
+    <h4 style="margin-top: 1.5rem;">cURL Chat Completion</h4>
+    <div class="code-block">curl http://localhost:11211/api/chat -d '{
+  "model": "TinyLlama/TinyLlama-1.1B-Chat-v1.0",
+  "messages": [{"role": "user", "content": "Explain gravity in 2 sentences"}],
+  "stream": true
+}'</div>
+
+    <h4 style="margin-top: 1.5rem;">OpenAI Python SDK</h4>
+    <div class="code-block">from openai import OpenAI
+
+client = OpenAI(base_url="http://localhost:11211/v1", api_key="not-needed")
+response = client.chat.completions.create(
+    model="TinyLlama/TinyLlama-1.1B-Chat-v1.0",
+    messages=[{"role": "user", "content": "Hello!"}]
+)
+print(response.choices[0].message.content)</div>
+  </div>
+</div>

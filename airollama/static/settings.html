@@ -1,0 +1,54 @@
+<!-- Settings View Panel -->
+<div id="tab-settings" class="view-panel">
+  <div class="card">
+    <h3>Settings & Model Storage Repository</h3>
+    <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0.25rem;">
+      Configure model storage directory path and Hugging Face API User Access Tokens on your Mac.
+    </p>
+    
+    <div class="form-group" style="margin-top: 1.25rem;">
+      <label>Model Storage Directory Path</label>
+      <div style="display: flex; gap: 0.75rem;">
+        <input type="text" id="settings-models-dir" placeholder="/path/to/models/directory" style="flex: 1; font-family: 'JetBrains Mono', monospace;">
+        <button class="btn-primary" onclick="saveSettings()">Save Directory</button>
+      </div>
+      <span id="settings-status" style="font-size: 0.85rem; color: var(--success); margin-top: 0.25rem;"></span>
+    </div>
+
+    <div class="form-group" style="margin-top: 1.25rem; background: rgba(255, 170, 0, 0.04); padding: 1rem; border-radius: 12px; border: 1px solid rgba(255, 170, 0, 0.2);">
+      <label style="color: #ffaa00; font-weight: 600;">💾 Disk Offload Cache Directory Path</label>
+      <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem; margin-bottom: 0.5rem;">
+        Custom directory path where layer streaming weight cache files are stored on disk.
+      </div>
+      <div style="display: flex; gap: 0.75rem;">
+        <input type="text" id="settings-offload-dir" placeholder="/path/to/offload/cache" style="flex: 1; font-family: 'JetBrains Mono', monospace;">
+        <button class="btn-primary" style="background: rgba(255, 170, 0, 0.2); color: #ffaa00; border: 1px solid rgba(255, 170, 0, 0.4);" onclick="saveOffloadDir()">Save Offload Path</button>
+      </div>
+      <span id="offload-dir-status" style="font-size: 0.85rem; color: var(--success); margin-top: 0.25rem;"></span>
+    </div>
+
+    <div class="form-group" style="margin-top: 1.5rem; background: rgba(0, 242, 254, 0.04); padding: 1rem; border-radius: 12px; border: 1px solid rgba(0, 242, 254, 0.15);">
+      <label style="color: var(--accent-cyan); font-weight: 600;">🤗 Hugging Face User Access Token (HF_TOKEN)</label>
+      <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem; margin-bottom: 0.5rem;">
+        Unlocks maximum CDN speed bandwidth and gated repositories (e.g. Meta Llama, Gemma) when pulling models from Hugging Face.
+      </div>
+      <div style="display: flex; gap: 0.75rem;">
+        <input type="password" id="settings-hf-token" placeholder="hf_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" style="flex: 1; font-family: 'JetBrains Mono', monospace;">
+        <button class="btn-primary" onclick="saveHFToken()">Save Token</button>
+        <button class="btn-danger" onclick="clearHFToken()" id="btn-clear-hf-token" style="display: none;">Clear Token</button>
+      </div>
+      <span id="hf-token-status" style="font-size: 0.85rem; color: var(--success); margin-top: 0.25rem;"></span>
+    </div>
+
+    <div style="display: flex; gap: 1rem; margin-top: 1.5rem;">
+      <div style="flex: 1; background: rgba(255, 255, 255, 0.03); padding: 1rem; border-radius: 12px; border: 1px solid var(--card-border);">
+        <div style="font-size: 0.85rem; color: var(--text-muted);">Active Execution Device</div>
+        <div style="font-size: 1.1rem; font-weight: 600; color: var(--accent-cyan); margin-top: 0.25rem;" id="settings-device">Loading...</div>
+      </div>
+      <div style="flex: 2; background: rgba(255, 255, 255, 0.03); padding: 1rem; border-radius: 12px; border: 1px solid var(--card-border);">
+        <div style="font-size: 0.85rem; color: var(--text-muted);">Persistent Config File</div>
+        <div style="font-size: 0.9rem; font-weight: 500; color: var(--accent-cyan); font-family: 'JetBrains Mono', monospace; margin-top: 0.25rem;" id="settings-config-path">~/.airollama/config.json</div>
+      </div>
+    </div>
+  </div>
+</div>

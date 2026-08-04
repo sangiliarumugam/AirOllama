@@ -58,6 +58,11 @@ def is_api_only() -> bool:
     return False
 
 @app.api_route("/", methods=["GET", "HEAD"])
+@app.api_route("/dashboard", methods=["GET", "HEAD"])
+@app.api_route("/playground", methods=["GET", "HEAD"])
+@app.api_route("/models", methods=["GET", "HEAD"])
+@app.api_route("/settings", methods=["GET", "HEAD"])
+@app.api_route("/apidocs", methods=["GET", "HEAD"])
 async def get_root(request: Request):
     if is_api_only():
         return HTMLResponse(content="Ollama is running", status_code=200)
@@ -72,15 +77,6 @@ async def get_root(request: Request):
             }
             return HTMLResponse(content=content, headers=headers)
     return HTMLResponse(content="<h1>AirOllama Server is running on port 11211</h1>")
-
-@app.api_route("/dashboard", methods=["GET", "HEAD"])
-async def get_dashboard():
-    index_file = os.path.join(static_dir, "index.html")
-    if os.path.exists(index_file):
-        with open(index_file, "r") as f:
-            content = f.read()
-            return HTMLResponse(content=content)
-    return HTMLResponse(content="<h1>AirOllama Dashboard</h1>")
 
 
 

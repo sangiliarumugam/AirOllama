@@ -1166,11 +1166,10 @@
       const targetModel = modelName !== undefined ? modelName : (select ? select.value : '');
       const isMlx = targetModel && (targetModel.toLowerCase().includes('mlx'));
       
-      const ramInput = document.getElementById('param-max-ram');
+      const ramInput = document.getElementById('param-ram-limit') || document.getElementById('param-max-ram');
       const ramBadge = document.getElementById('ram-slider-val');
-      const ramInfo = document.getElementById('ram-speed-preset-info');
-      const ramContainer = document.getElementById('ram-cap-container');
-      const presetBtns = document.querySelectorAll('#ram-preset-buttons button');
+      const ramInfo = document.getElementById('ram-model-requirement-badge') || document.getElementById('ram-speed-preset-info');
+      const presetBtns = document.querySelectorAll('.btn-preset, #ram-preset-buttons button');
 
       if (isMlx) {
         if (ramInput) ramInput.disabled = true;
@@ -1183,9 +1182,6 @@
           ramInfo.innerHTML = '⚡ <b>Apple MLX Native Model:</b> Runs 100% on Metal GPU VRAM without RAM capping constraints.';
           ramInfo.style.color = 'var(--accent-cyan)';
         }
-        if (ramContainer) {
-          ramContainer.style.opacity = '0.65';
-        }
         presetBtns.forEach(btn => {
           btn.disabled = true;
           btn.style.cursor = 'not-allowed';
@@ -1196,9 +1192,6 @@
         if (ramBadge && ramInput) {
           updateRamCapBadge(ramInput.value);
         }
-        if (ramContainer) {
-          ramContainer.style.opacity = '1.0';
-        }
         presetBtns.forEach(btn => {
           btn.disabled = false;
           btn.style.cursor = 'pointer';
@@ -1208,34 +1201,33 @@
     }
 
     function updateRamCapBadge(val) {
-      const slider = document.getElementById('param-max-ram');
+      const slider = document.getElementById('param-ram-limit') || document.getElementById('param-max-ram');
       if (slider && slider.disabled) return;
+
       const badge = document.getElementById('ram-slider-val');
-      const info = document.getElementById('ram-speed-preset-info');
-      if (!badge || !info) return;
+      const info = document.getElementById('ram-model-requirement-badge') || document.getElementById('ram-speed-preset-info');
+      if (!badge) return;
 
       const ramVal = parseFloat(val);
-      const modelSize = currentModelData ? currentModelData.model_size_gb : 4.0;
-      const minRam = currentModelData ? currentModelData.min_ram_gb : 2.5;
+      const modelSize = currentModelData ? (currentModelData.model_size_gb || 4.0) : 4.0;
+      const minRam = currentModelData ? (currentModelData.min_ram_gb || 2.5) : 2.5;
 
-      if (ramVal >= modelSize) {
-        badge.innerText = `${ramVal} GB (🚀 Max Speed)`;
-        badge.style.background = 'linear-gradient(135deg, var(--accent-cyan), #4facfe)';
-        badge.style.color = '#000';
-        info.innerText = `🔥 100% Metal GPU Accelerated (Blazing fast generation)`;
-        info.style.color = 'var(--accent-cyan)';
-      } else if (ramVal <= minRam + 0.5) {
-        badge.innerText = `${ramVal} GB (🐢 Min RAM)`;
-        badge.style.background = 'rgba(255, 170, 0, 0.3)';
-        badge.style.color = '#ffaa00';
-        info.innerText = `🐢 Disk Offloaded (Saves RAM, slower output speed)`;
-        info.style.color = '#ffaa00';
-      } else {
-        badge.innerText = `${ramVal} GB (⚡ High Speed)`;
-        badge.style.background = 'rgba(157, 78, 221, 0.3)';
-        badge.style.color = '#d8b4fe';
-        info.innerText = `⚡ Partial GPU Acceleration (Fast output with RAM safety)`;
-        info.style.color = '#d8b4fe';
+      badge.innerText = `${ramVal.toFixed(1)} GB`;
+
+      if (info) {
+        if (ramVal >= modelSize) {
+          info.innerHTML = `🔥 <b>100% Metal GPU Accelerated:</b> All layers loaded in VRAM (Max Speed)`;
+          info.style.color = 'var(--accent-cyan)';
+          info.style.background = 'rgba(0, 242, 254, 0.1)';
+        } else if (ramVal <= minRam + 0.5) {
+          info.innerHTML = `🐢 <b>Disk Offloaded Mode:</b> Unused layers paged from disk storage (Saves RAM)`;
+          info.style.color = '#ffaa00';
+          info.style.background = 'rgba(255, 170, 0, 0.1)';
+        } else {
+          info.innerHTML = `⚡ <b>Partial GPU Acceleration:</b> Balanced memory & layer streaming speed`;
+          info.style.color = '#d8b4fe';
+          info.style.background = 'rgba(157, 78, 221, 0.1)';
+        }
       }
     }
 

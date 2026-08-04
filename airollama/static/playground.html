@@ -46,7 +46,7 @@
           ℹ️ Select a model to calculate memory requirements
         </div>
 
-        <input type="range" id="param-ram-limit" min="1.0" max="32.0" step="0.5" value="8.0" oninput="updateRamSliderDisplay(this.value)" style="width: 100%; accent-color: var(--accent-cyan); margin-top: 0.4rem; cursor: pointer;">
+        <input type="range" id="param-ram-limit" min="1.0" max="32.0" step="0.5" value="8.0" oninput="updateRamSliderDisplay(this.value)" onchange="onRamCapChanged(this.value)" style="width: 100%; accent-color: var(--accent-cyan); margin-top: 0.4rem; cursor: pointer;">
 
         <!-- Quick Preset Buttons -->
         <div style="display: flex; gap: 0.35rem; margin-top: 0.6rem;">

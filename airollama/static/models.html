@@ -13,7 +13,8 @@
       </select>
       <input type="text" id="pull-model-input" placeholder="e.g. llama3.2 or gemma4:31b-mlx or unsloth/Llama-3.2-1B-Instruct" style="flex: 1; min-width: 250px;">
       <button class="btn-primary" id="btn-pull" onclick="pullModel()">Pull Model</button>
-      <button class="btn-danger" id="btn-cancel-pull" onclick="cancelPull()" style="display: none;">Cancel Pull</button>
+      <button class="btn-danger" id="btn-cancel-pull" onclick="cancelPull()" style="display: none;">🛑 Cancel Download</button>
+      <button class="btn-primary" id="btn-retry-pull" onclick="retryPull()" style="display: none; background: linear-gradient(135deg, #ffaa00, #ff7700); border-color: #ffaa00; font-weight: bold;">🔄 Retry Download</button>
     </div>
 
     <div id="pull-status" style="margin-top: 0.75rem; color: var(--accent-cyan); font-size: 0.9rem;"></div>

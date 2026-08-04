@@ -1733,6 +1733,24 @@
     }
 
 
+    let lastPullParams = { name: '', source: 'auto' };
+
+    async function retryPull() {
+      const nameInput = document.getElementById('pull-model-input');
+      const sourceSelect = document.getElementById('pull-source-select');
+      const btnRetry = document.getElementById('btn-retry-pull');
+      
+      if (btnRetry) btnRetry.style.display = 'none';
+
+      if (lastPullParams.name && nameInput) {
+        nameInput.value = lastPullParams.name;
+      }
+      if (lastPullParams.source && sourceSelect) {
+        sourceSelect.value = lastPullParams.source;
+      }
+      pullModel();
+    }
+
     async function pullModel() {
       const nameInput = document.getElementById('pull-model-input');
       const name = nameInput.value.trim();
@@ -1744,11 +1762,13 @@
       const sourceSelect = document.getElementById('pull-source-select');
       const source = sourceSelect ? sourceSelect.value : 'auto';
 
+      lastPullParams = { name: name, source: source };
       activePullModelName = name;
       activePullController = new AbortController();
 
       const btnPull = document.getElementById('btn-pull');
       const btnCancel = document.getElementById('btn-cancel-pull');
+      const btnRetry = document.getElementById('btn-retry-pull');
       const status = document.getElementById('pull-status');
       const globalContainer = document.getElementById('global-download-container');
       const globalFill = document.getElementById('global-progress-fill');
@@ -1764,7 +1784,9 @@
       let lastSpeedBytes = 0;
 
       btnPull.disabled = true;
-      btnCancel.style.display = 'inline-block';
+      if (btnCancel) btnCancel.style.display = 'inline-block';
+      if (btnRetry) btnRetry.style.display = 'none';
+
       status.style.color = 'var(--accent-cyan)';
       status.innerText = `⌛ Connecting to ${source === 'ollama' ? 'Ollama Registry' : source === 'huggingface' ? 'Hugging Face Hub' : 'auto source'}...`;
       
@@ -1837,7 +1859,6 @@
                 // Overall Progress Bar & Stats
                 if (totalSzMb > 0) {
                   let overallPct = Math.min(100, Math.round((totalDlMb / totalSzMb) * 100 * 10) / 10);
-                  // Fix: when all threads completed, force 100% (floating-point rounding of many values can cause 99.6%)
                   if (completedCount === totalThreads && totalThreads > 0) {
                     overallPct = 100;
                   }
@@ -1901,6 +1922,7 @@
                 hasError = true;
                 status.style.color = 'var(--danger)';
                 status.innerText = `❌ Error: ${data.error}`;
+                if (btnRetry) btnRetry.style.display = 'inline-block';
               }
             } catch (e) {}
           }
@@ -1913,10 +1935,12 @@
           status.style.color = 'var(--success)';
           status.innerText = '✅ Multi-threaded model download complete! Available in playground.';
           nameInput.value = '';
+          if (btnRetry) btnRetry.style.display = 'none';
           loadModels();
         }
 
       } catch (e) {
+        if (btnRetry) btnRetry.style.display = 'inline-block';
         if (e.name === 'AbortError') {
           status.style.color = 'var(--warning)';
           status.innerText = '⚠️ Download pull cancelled by user.';
@@ -1925,10 +1949,9 @@
           status.style.color = 'var(--danger)';
           status.innerText = '❌ Download failed: ' + e.message;
         }
-      }
- finally {
+      } finally {
         btnPull.disabled = false;
-        btnCancel.style.display = 'none';
+        if (btnCancel) btnCancel.style.display = 'none';
         activePullController = null;
         activePullModelName = null;
       }
@@ -1961,6 +1984,7 @@
       const status = document.getElementById('pull-status');
       const btnPull = document.getElementById('btn-pull');
       const btnCancel = document.getElementById('btn-cancel-pull');
+      const btnRetry = document.getElementById('btn-retry-pull');
 
       status.style.color = 'var(--warning)';
       status.innerText = '🛑 Cancelling download and purging partial files...';
@@ -1980,15 +2004,10 @@
       } finally {
         resetDownloadUI();
         btnPull.disabled = false;
-        btnCancel.style.display = 'none';
+        if (btnCancel) btnCancel.style.display = 'none';
+        if (btnRetry) btnRetry.style.display = 'inline-block';
         status.style.color = 'var(--warning)';
-        status.innerText = '⚠️ Download cancelled and partial files deleted.';
-
-        setTimeout(() => {
-          if (status.innerText.includes('cancelled')) {
-            status.innerText = '';
-          }
-        }, 3000);
+        status.innerText = `⚠️ Download for '${modelToCancel}' cancelled and partial files deleted. Click 'Retry Download' to restart.`;
 
         activePullController = null;
         activePullModelName = null;

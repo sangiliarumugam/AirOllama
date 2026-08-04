@@ -673,6 +673,7 @@ async def chat(req: ChatRequest, request: Request):
 # --- OpenAI Compatibility Endpoints ---
 
 @app.get("/v1/models")
+@app.get("/api/v1/models")
 async def openai_list_models():
     models = engine.list_local_models()
     data = []
@@ -686,6 +687,9 @@ async def openai_list_models():
     return {"object": "list", "data": data}
 
 @app.post("/v1/chat/completions")
+@app.post("/api/chat/completions")
+@app.post("/api/v1/chat/completions")
+@app.post("/v1/chat")
 async def openai_chat_completions(req: OpenAIChatCompletionRequest):
     messages = [m.dict() for m in req.messages]
     if not engine.current_model_name or engine.current_model_name != req.model:
@@ -763,6 +767,7 @@ async def api_embeddings(req: EmbeddingRequest):
 
 
 @app.post("/v1/embeddings")
+@app.post("/api/v1/embeddings")
 async def openai_embeddings(req: EmbeddingRequest):
     """OpenAI-compatible embeddings endpoint."""
     text = req.prompt or (req.input[0] if isinstance(req.input, list) and req.input else str(req.input or ""))

@@ -10,31 +10,50 @@ class AirOllamaApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNavigat
     var webView: WKWebView!
     var statusItem: NSStatusItem!
     var serverProcess: Process?
+    var isApiOnly: Bool = false
+    var apiOnlyMenuItem: NSMenuItem!
     let serverURL = URL(string: "http://127.0.0.1:11211")!
     
     func applicationDidFinishLaunching(_ notification: Notification) {
+        let args = CommandLine.arguments
+        if args.contains("--api-only") || args.contains("--no-ui") {
+            isApiOnly = true
+        }
         setupMenuBar()
         checkAndStartServer()
         setupWindow()
+        if isApiOnly {
+            window.orderOut(nil)
+        }
     }
     
     func setupMenuBar() {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
-        if let button = statusItem.button {
-            button.title = "⚡ AirOllama"
-            button.font = NSFont.systemFont(ofSize: 12, weight: .bold)
-        }
+        updateStatusItemTitle()
         
         let menu = NSMenu()
         menu.addItem(NSMenuItem(title: "🖥️ Show AirOllama Dashboard", action: #selector(showDashboard), keyEquivalent: "d"))
+        
+        apiOnlyMenuItem = NSMenuItem(title: isApiOnly ? "✅ Mode: API Server Only (Headless)" : "🔌 Switch to API-Only Mode", action: #selector(toggleApiOnlyMode), keyEquivalent: "a")
+        menu.addItem(apiOnlyMenuItem)
+        
         menu.addItem(NSMenuItem.separator())
-        menu.addItem(NSMenuItem(title: "⚡ Server: http://127.0.0.1:11211", action: nil, keyEquivalent: ""))
+        menu.addItem(NSMenuItem(title: "⚡ Ollama API: http://127.0.0.1:11211/api/", action: nil, keyEquivalent: ""))
+        menu.addItem(NSMenuItem(title: "🔌 OpenAI API: http://127.0.0.1:11211/v1/", action: nil, keyEquivalent: ""))
+        menu.addItem(NSMenuItem.separator())
         menu.addItem(NSMenuItem(title: "📂 Open Models Directory", action: #selector(openModelsFolder), keyEquivalent: "m"))
         menu.addItem(NSMenuItem(title: "📄 View Logs", action: #selector(openLogsFolder), keyEquivalent: "l"))
         menu.addItem(NSMenuItem.separator())
         menu.addItem(NSMenuItem(title: "🚪 Quit AirOllama", action: #selector(quitApp), keyEquivalent: "q"))
         
         statusItem.menu = menu
+    }
+    
+    func updateStatusItemTitle() {
+        if let button = statusItem?.button {
+            button.title = isApiOnly ? "🔌 AirOllama API (11211)" : "⚡ AirOllama"
+            button.font = NSFont.systemFont(ofSize: 12, weight: .bold)
+        }
     }
     
     func setupWindow() {
@@ -58,8 +77,10 @@ class AirOllamaApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNavigat
         webView.setValue(false, forKey: "drawsBackground")
         
         window.contentView!.addSubview(webView)
-        window.makeKeyAndOrderFront(nil)
-        NSApp.activate(ignoringOtherApps: true)
+        if !isApiOnly {
+            window.makeKeyAndOrderFront(nil)
+            NSApp.activate(ignoringOtherApps: true)
+        }
         
         loadDashboard()
     }
@@ -114,15 +135,23 @@ class AirOllamaApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNavigat
             return
         }
         
-        print("🚀 Launching server script at: \(scriptPath) (Working Dir: \(workDir))")
+        print("🚀 Launching server script at: \(scriptPath) (Working Dir: \(workDir), API Only: \(isApiOnly))")
         
         let proc = Process()
         proc.executableURL = URL(fileURLWithPath: "/bin/bash")
-        proc.arguments = [scriptPath, "11211"]
+        
+        var procArgs = [scriptPath, "11211"]
+        if isApiOnly {
+            procArgs.append("--api-only")
+        }
+        proc.arguments = procArgs
         proc.currentDirectoryURL = URL(fileURLWithPath: workDir)
         
         var env = ProcessInfo.processInfo.environment
         env["PATH"] = "/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/opt/homebrew/bin:" + (env["PATH"] ?? "")
+        if isApiOnly {
+            env["AIROLLAMA_API_ONLY"] = "1"
+        }
         proc.environment = env
         
         do {
@@ -154,6 +183,28 @@ class AirOllamaApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNavigat
             }
         }
         task.resume()
+    }
+    
+    @objc func toggleApiOnlyMode() {
+        isApiOnly.toggle()
+        updateStatusItemTitle()
+        if isApiOnly {
+            apiOnlyMenuItem.title = "✅ Mode: API Server Only (Headless)"
+            print("🔌 Restarting AirOllama server in API-Only mode...")
+        } else {
+            apiOnlyMenuItem.title = "🔌 Switch to API-Only Mode"
+            print("⚡ Restarting AirOllama server with Full Dashboard UI...")
+        }
+        restartServer()
+    }
+    
+    func restartServer() {
+        if let proc = serverProcess, proc.isRunning {
+            proc.terminate()
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
+            self?.launchServerScript()
+        }
     }
     
     @objc func showDashboard() {

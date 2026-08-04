@@ -17,13 +17,25 @@ fi
 
 export PYTHONPATH="$SCRIPT_DIR:$PYTHONPATH"
 export HF_HOME="$SCRIPT_DIR/.hf_cache"
-PORT=${1:-11211}
+PORT=11211
+EXTRA_ARGS=""
 
+for arg in "$@"; do
+    if [[ "$arg" =~ ^[0-9]+$ ]]; then
+        PORT="$arg"
+    elif [[ "$arg" == "--api-only" || "$arg" == "--no-ui" ]]; then
+        EXTRA_ARGS="$EXTRA_ARGS $arg"
+    fi
+done
 
 echo "=========================================================="
 echo "🚀 AirOllama Server (Layer Streaming Engine)"
 echo "📡 Listening on http://0.0.0.0:${PORT}"
-echo "💻 Web Dashboard: http://localhost:${PORT}"
+if [[ "$EXTRA_ARGS" == *"--api-only"* || "$EXTRA_ARGS" == *"--no-ui"* ]]; then
+    echo "🔌 Mode: API Server Only (OpenCode Agent Ready)"
+else
+    echo "💻 Web Dashboard: http://localhost:${PORT}"
+fi
 echo "=========================================================="
 
-python3 -m airollama.cli serve --port "$PORT"
+python3 -m airollama.cli serve --port "$PORT" $EXTRA_ARGS

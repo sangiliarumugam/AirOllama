@@ -47,9 +47,20 @@ static_dir = os.path.join(os.path.dirname(__file__), "static")
 if os.path.exists(static_dir):
     app.mount("/static", StaticFiles(directory=static_dir), name="static")
 
+def is_api_only() -> bool:
+    """Check if server is running in API-only / Headless mode."""
+    import sys
+    import os
+    if "--api-only" in sys.argv or "--no-ui" in sys.argv:
+        return True
+    if os.environ.get("AIROLLAMA_API_ONLY", "").lower() in ["1", "true", "yes"]:
+        return True
+    return False
+
 @app.api_route("/", methods=["GET", "HEAD"])
-@app.api_route("/dashboard", methods=["GET", "HEAD"])
-async def get_dashboard():
+async def get_root(request: Request):
+    if is_api_only():
+        return HTMLResponse(content="Ollama is running", status_code=200)
     index_file = os.path.join(static_dir, "index.html")
     if os.path.exists(index_file):
         with open(index_file, "r") as f:
@@ -61,6 +72,15 @@ async def get_dashboard():
             }
             return HTMLResponse(content=content, headers=headers)
     return HTMLResponse(content="<h1>AirOllama Server is running on port 11211</h1>")
+
+@app.api_route("/dashboard", methods=["GET", "HEAD"])
+async def get_dashboard():
+    index_file = os.path.join(static_dir, "index.html")
+    if os.path.exists(index_file):
+        with open(index_file, "r") as f:
+            content = f.read()
+            return HTMLResponse(content=content)
+    return HTMLResponse(content="<h1>AirOllama Dashboard</h1>")
 
 
 
@@ -715,7 +735,6 @@ async def openai_chat_completions(req: OpenAIChatCompletionRequest):
             "id": f"chatcmpl-{int(time.time())}",
             "object": "chat.completion",
             "created": int(time.time()),
-            "model": req.model,
             "choices": [{
                 "index": 0,
                 "message": {"role": "assistant", "content": full_content},
@@ -723,3 +742,46 @@ async def openai_chat_completions(req: OpenAIChatCompletionRequest):
             }],
             "usage": {"prompt_tokens": -1, "completion_tokens": -1, "total_tokens": -1}
         }
+
+
+class EmbeddingRequest(BaseModel):
+    model: str
+    prompt: Optional[str] = None
+    input: Optional[Any] = None
+
+
+@app.post("/api/embeddings")
+@app.post("/api/embed")
+async def api_embeddings(req: EmbeddingRequest):
+    """Ollama-compatible embeddings endpoint for OpenCode Agent and AI tools."""
+    text = req.prompt or (req.input[0] if isinstance(req.input, list) and req.input else str(req.input or ""))
+    try:
+        vec = engine.generate_embeddings(req.model, text)
+        return {"embedding": vec, "embeddings": [vec]}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/v1/embeddings")
+async def openai_embeddings(req: EmbeddingRequest):
+    """OpenAI-compatible embeddings endpoint."""
+    text = req.prompt or (req.input[0] if isinstance(req.input, list) and req.input else str(req.input or ""))
+    try:
+        vec = engine.generate_embeddings(req.model, text)
+        return {
+            "object": "list",
+            "data": [
+                {
+                    "object": "embedding",
+                    "embedding": vec,
+                    "index": 0
+                }
+            ],
+            "model": req.model,
+            "usage": {
+                "prompt_tokens": len(text.split()),
+                "total_tokens": len(text.split())
+            }
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

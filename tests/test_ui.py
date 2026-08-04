@@ -10,7 +10,7 @@ def test_dashboard_ui_layout():
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
         page = browser.new_page()
-        page.goto(BASE_URL, wait_until="domcontentloaded")
+        page.goto(f"{BASE_URL}/dashboard", wait_until="domcontentloaded")
         
         # Verify top row cards
         top_model = page.query_selector(".grid-top-row #stat-model")

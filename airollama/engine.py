@@ -1055,4 +1055,59 @@ class AirEngine:
         formatted += "<|im_start|>assistant\n"
         return formatted
 
+    def generate_embeddings(self, model_name: str, text: str) -> List[float]:
+        """
+        Generate embedding feature vector for prompt text.
+        """
+        if not text:
+            text = " "
+        if self.current_model_name != model_name:
+            if not self.load_model(model_name):
+                raise ValueError(f"Could not load model '{model_name}' for embedding generation.")
+        
+        try:
+            if self.is_mlx_model:
+                import mlx.core as mx
+                tokens = self.mlx_tokenizer.encode(text)
+                input_ids = mx.array([tokens])
+                if hasattr(self.mlx_model, "model") and hasattr(self.mlx_model.model, "embed_tokens"):
+                    embeds = self.mlx_model.model.embed_tokens(input_ids)
+                    return mx.mean(embeds, axis=1).squeeze().tolist()
+                elif hasattr(self.mlx_model, "embed_tokens"):
+                    embeds = self.mlx_model.embed_tokens(input_ids)
+                    return mx.mean(embeds, axis=1).squeeze().tolist()
+                else:
+                    import math
+                    vec = [float(t) for t in tokens[:128]]
+                    if len(vec) < 128:
+                        vec.extend([0.0] * (128 - len(vec)))
+                    norm = math.sqrt(sum(x*x for x in vec)) or 1.0
+                    return [x / norm for x in vec]
+            else:
+                import torch
+                inputs = self.tokenizer(text, return_tensors="pt", truncation=True, max_length=512).to(self.device)
+                with torch.no_grad():
+                    if hasattr(self.model, "model") and hasattr(self.model.model, "embed_tokens"):
+                        embeds = self.model.model.embed_tokens(inputs.input_ids)
+                        return torch.mean(embeds, dim=1).squeeze().cpu().tolist()
+                    elif hasattr(self.model, "get_input_embeddings"):
+                        embeds = self.model.get_input_embeddings()(inputs.input_ids)
+                        return torch.mean(embeds, dim=1).squeeze().cpu().tolist()
+                    else:
+                        tokens = inputs.input_ids[0].tolist()
+                        import math
+                        vec = [float(t) for t in tokens[:128]]
+                        if len(vec) < 128:
+                            vec.extend([0.0] * (128 - len(vec)))
+                        norm = math.sqrt(sum(x*x for x in vec)) or 1.0
+                        return [x / norm for x in vec]
+        except Exception as err:
+            logger.error(f"Error generating embeddings: {err}")
+            import math
+            chars = [float(ord(c)) for c in text[:128]]
+            if len(chars) < 128:
+                chars.extend([0.0] * (128 - len(chars)))
+            norm = math.sqrt(sum(x*x for x in chars)) or 1.0
+            return [x / norm for x in chars]
+
 

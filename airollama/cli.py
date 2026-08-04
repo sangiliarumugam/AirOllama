@@ -17,6 +17,8 @@ def main():
     serve_parser = subparsers.add_parser("serve", help="Start the AirOllama API server")
     serve_parser.add_argument("--host", default=DEFAULT_HOST, help=f"Host to bind server (default: {DEFAULT_HOST})")
     serve_parser.add_argument("--port", type=int, default=DEFAULT_PORT, help=f"Port to listen on (default: {DEFAULT_PORT})")
+    serve_parser.add_argument("--api-only", action="store_true", help="Run in API-only / Headless mode (for OpenCode Agent / AI clients)")
+    serve_parser.add_argument("--no-ui", action="store_true", help="Alias for --api-only")
 
     # Command: list / tags
     subparsers.add_parser("list", help="List locally cached models")
@@ -41,7 +43,17 @@ def main():
     if args.command == "serve" or args.command is None:
         port = getattr(args, "port", DEFAULT_PORT)
         host = getattr(args, "host", DEFAULT_HOST)
-        print(f"🚀 Starting AirOllama server on http://{host}:{port} (Web Dashboard & Ollama API)")
+        api_only = getattr(args, "api_only", False) or getattr(args, "no_ui", False) or ("--api-only" in sys.argv) or ("--no-ui" in sys.argv)
+        
+        if api_only:
+            print("==========================================================")
+            print(f"🚀 AirOllama Server (API-Only Mode / OpenCode Agent Ready)")
+            print(f"📡 Ollama API: http://{host}:{port}/api/")
+            print(f"🔌 OpenAI API: http://{host}:{port}/v1/")
+            print(f"⚡ UI Dashboard Disabled (--api-only)")
+            print("==========================================================")
+        else:
+            print(f"🚀 Starting AirOllama server on http://{host}:{port} (Web Dashboard & Ollama API)")
 
         # Filter out repetitive 1-second /api/ps status polling logs from console output
         class EndpointFilter(logging.Filter):

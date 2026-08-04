@@ -1,6 +1,6 @@
 # 🚀 AirOllama
 
-**AirOllama** is an open-source, memory-efficient LLM inference engine and server that combines **Ollama API compatibility** with **AirLLM-style layer streaming and disk offloading**. Built specifically for macOS (Apple Silicon Metal GPU) and CUDA devices, AirOllama allows developers and researchers to run high-parameter Large Language Models (such as 27B–70B models) on consumer hardware with strict RAM limits.
+**AirOllama** is an open-source, memory-efficient LLM inference engine, native macOS application, and REST API server that combines **Ollama & OpenAI API compatibility** with **AirLLM-style layer streaming and disk offloading**. Built specifically for macOS (Apple Silicon Metal GPU) and CUDA devices, AirOllama allows developers and researchers to run high-parameter Large Language Models (such as 27B–70B+ models) on consumer hardware with strict RAM limits.
 
 ---
 
@@ -8,10 +8,11 @@
 
 Running modern 27B+ parameter models normally requires 32GB to 64GB+ of dedicated Unified Memory or VRAM. **AirOllama** bridges this gap by:
 
-1. **AirLLM-Style Layer Streaming**: Dynamically loading and unloading transformer layer blocks between RAM, Metal VRAM, and disk memory-mapped cache files (`.offload`) via PyTorch `accelerate`, keeping RAM consumption below strict user-configured caps.
+1. **AirLLM-Style Layer Streaming**: Dynamically loading and unloading transformer decoder layer blocks between RAM, Metal VRAM, and disk memory-mapped cache files (`.offload`) via PyTorch `accelerate`, keeping RAM consumption below strict user-configured caps.
 2. **Native Apple MLX Execution**: Native support for `mlx-community` 4-bit and 8-bit quantized models running natively on Apple Silicon Metal Unified Memory.
-3. **Drop-in Ollama API Ecosystem**: Exposing identical REST API endpoints (`/api/generate`, `/api/chat`, `/api/tags`, `/api/pull`) so existing Ollama frontends, SDKs, and toolchains work out-of-the-box.
-4. **Rich Web Dashboard**: A visual interface with live VRAM/RAM gauges, layer visualizers, GFM Markdown chat playground, and directory configuration management.
+3. **Drop-in Ollama & OpenAI API Ecosystem**: Exposing identical REST API endpoints (`/api/generate`, `/api/chat`, `/api/chat/completions`, `/v1/chat/completions`, `/api/embeddings`, `/v1/embeddings`) so existing Ollama frontends, OpenCode Agents, and OpenAI SDKs work out-of-the-box.
+4. **Native macOS Application (`AirOllama.app`)**: Native Swift/AppKit menu bar app with embedded WebKit dashboard and auto-spawns the backend engine server.
+5. **Modular Web Dashboard & Multi-Threaded Downloader**: Clean multi-page Web UI with live VRAM/RAM gauges, layer visualizers, GFM Markdown chat playground, multi-worker thread LED download matrix, and **Cancel & Retry** download management.
 
 ---
 
@@ -53,9 +54,28 @@ pip install -r requirements.txt
 
 ---
 
-### 3. Starting the Server
+### 3. Native macOS Application (`AirOllama.app`)
 
-Launch the AirOllama server (default port `11211`):
+AirOllama includes a native macOS application built with Swift and AppKit.
+
+#### Building the macOS App:
+```bash
+./build_mac_app.sh
+```
+This compiles the native Swift application to `./dist/AirOllama.app` and creates a root `./AirOllama.app` shortcut.
+
+#### Launching:
+Double-click `AirOllama.app` or run:
+```bash
+open dist/AirOllama.app
+```
+When launched, `AirOllama.app` displays a status bar item (`⚡ AirOllama`) and automatically launches the backend server on port `11211`.
+
+---
+
+### 4. Running the Backend Server via CLI
+
+You can also run the backend server standalone or in API-only headless mode (ideal for IDE coding assistants like OpenCode Agent):
 
 ```bash
 ./run_server.sh 11211
@@ -64,7 +84,11 @@ Launch the AirOllama server (default port `11211`):
 Or using the Python CLI:
 
 ```bash
+# Standard mode (Web UI + REST API)
 python -m airollama.cli serve --port 11211
+
+# Headless API-only mode (No UI overhead)
+python -m airollama.cli serve --port 11211 --api-only
 ```
 
 Once started, open your browser and navigate to:
@@ -72,34 +96,38 @@ Once started, open your browser and navigate to:
 
 ---
 
-### 4. Using the Web Dashboard
+### 5. Web Dashboard Architecture
 
-The Web Dashboard is divided into intuitive control tabs:
+The Web Dashboard is modularly structured into separate page templates (`airollama/static/*.html`):
 
-#### 💬 Playground (Chat & Single Prompt)
-- **Interactive Chat**: Full multi-turn conversational interface with streaming tokens.
-- **Markdown & Code Support**: Renders GitHub Flavored Markdown (headings, lists, blockquotes, tables) with language-tagged dark code blocks and a **1-click Copy Code** button.
-- **RAM Cap Control**: Adjust the **RAM Safety Slider** or use presets (**Min RAM**, **Balanced**, **Max Speed**). When an MLX model is active, the slider auto-adjusts to `Metal VRAM (Native)`.
+#### 📊 Dashboard (`dashboard.html`)
+- Live system metrics: **Active Model**, **Active Layer**, **Model RAM**, **Available System RAM**, **VRAM / Metal Memory**, and **Disk Offload Status**.
+- **Layer-by-Layer Visualizer**: Real-time animated decoder layer blocks glowing as model weights stream into GPU memory.
 
-#### 📊 Live Memory & Layer Visualizer
-- Track real-time **System RAM**, **Process Memory**, **Metal VRAM**, and **Disk Offload Cache** sizes.
-- View real-time color-coded **Layer Blocks** showing which transformer decoder layers reside in RAM/VRAM versus Disk Offload.
+#### 💬 Chat Playground (`playground.html`)
+- **Interactive Multi-Turn Chat**: Full conversational UI with streaming token generation and live `tok/s` speed meter.
+- **Markdown & Code Blocks**: Renders GitHub Flavored Markdown with language-tagged dark code blocks and a **1-click Copy Code** button.
+- **RAM & Speed Limit Slider**: Adjust layer RAM allocation on the fly with presets (**Min RAM**, **Balanced**, **Max Speed**). Adjusting the slider automatically triggers an `Unload -> Preload` pipeline to re-allocate layers in memory.
+- **Web Search & Location Context**: Live web search integration and system location prompt customization.
 
-#### 📥 Model Repository & Hugging Face Pulls
-- Pull models directly from Ollama or Hugging Face (e.g. `unsloth/gemma-2-2b-it`, `mlx-community/Qwen3.6-27B-AEON-Ultimate-Uncensored-BF16-mlx-8Bit`).
-- Monitor live download progress bars with speed, size, and ETA metrics.
+#### 📦 Models & Multi-Threaded Pull Manager (`models.html`)
+- Pull models from **Ollama Registry** (`registry.ollama.ai`) or **Hugging Face Hub** (`huggingface.co`).
+- **Worker Thread LED Matrix**: Real-time visual LED indicator panel tracking parallel download worker streams.
+- **Cancel & Retry Downloads**: Cancel active downloads (`🛑 Cancel Download`) with automatic partial file cleanup, or restart interrupted pulls with one click (`🔄 Retry Download`).
 
-#### ⚙️ Settings Tab
-- **Model Storage Directory**: Configure where downloaded models are stored on disk.
-- **Disk Offload Cache Directory**: Custom directory path for memory-mapped weight offloading.
-- **Hugging Face Token (`HF_TOKEN`)**: Configure HF API User Access Tokens to unlock high-speed CDN bandwidth and gated repositories (Meta Llama, Gemma).
-- Settings automatically persist across restarts in `config.json`.
+#### ⚙️ Settings (`settings.html`)
+- **Model Storage Directory**: Configure local cache directory path.
+- **Disk Offload Directory**: Custom path for layer streaming weight cache files.
+- **Hugging Face Token (`HF_TOKEN`)**: Manage HF API tokens for gated models (Meta Llama 3, Gemma) and maximum CDN download speeds.
+
+#### 📖 API Docs (`apidocs.html`)
+- Interactive cURL and OpenAI Python SDK code integration guides.
 
 ---
 
-### 5. Using the Ollama REST API
+### 6. Ollama & OpenAI REST API Compatibility
 
-AirOllama serves standard HTTP REST API endpoints for developers and external UI clients:
+AirOllama provides full compatibility for Ollama and OpenAI REST API clients on port `11211`:
 
 #### List Local Models (`GET /api/tags`)
 ```bash
@@ -115,7 +143,7 @@ curl http://localhost:11211/api/generate -d '{
 }'
 ```
 
-#### Chat Completion (`POST /api/chat`)
+#### Ollama Chat Completion (`POST /api/chat`)
 ```bash
 curl http://localhost:11211/api/chat -d '{
   "model": "gemma4:e4b",
@@ -126,15 +154,34 @@ curl http://localhost:11211/api/chat -d '{
 }'
 ```
 
-#### System Status & Telemetry (`GET /api/status`)
+#### OpenAI Compatible Chat Completion (`POST /v1/chat/completions` or `POST /api/chat/completions`)
 ```bash
-curl http://localhost:11211/api/status
+curl http://localhost:11211/v1/chat/completions -d '{
+  "model": "gemma4:e4b",
+  "messages": [
+    { "role": "user", "content": "Hello!" }
+  ]
+}'
 ```
 
-#### Connecting Third-Party Ollama Clients
-You can connect frontends like **Open WebUI**, **Chatbox**, or **AnythingLLM** by setting their Ollama Base URL to:
-```text
-http://localhost:11211
+#### OpenAI Python SDK Example
+```python
+from openai import OpenAI
+
+client = OpenAI(base_url="http://localhost:11211/v1", api_key="not-needed")
+response = client.chat.completions.create(
+    model="gemma4:e4b",
+    messages=[{"role": "user", "content": "Write a Python function to sort a list."}]
+)
+print(response.choices[0].message.content)
+```
+
+#### Embeddings Endpoint (`POST /v1/embeddings` & `POST /api/embeddings`)
+```bash
+curl http://localhost:11211/v1/embeddings -d '{
+  "model": "gemma4:e4b",
+  "input": "Sample text for vector embedding"
+}'
 ```
 
 ---
@@ -146,13 +193,22 @@ AirOllama/
 ├── airollama/
 │   ├── cli.py               # CLI entrypoint for running server & commands
 │   ├── config.py            # Persistent JSON configuration manager (config.json)
-│   ├── engine.py            # Core Layer-Streaming & MLX Inference Engine
-│   ├── ollama_downloader.py # Hugging Face & Ollama manifest model downloader
+│   ├── database.py          # SQLite database manager (~/.airollama/airollama.db)
+│   ├── engine.py            # Core Layer-Streaming & Apple MLX Engine
+│   ├── ollama_downloader.py # Hugging Face & Ollama manifest multi-threaded downloader
 │   ├── ollama_registry.py   # Ollama model name resolution mapping
 │   ├── server.py            # FastAPI & Uvicorn REST API server
 │   ├── web_search.py        # Web search helper integration
 │   └── static/
-│       └── index.html       # Single-page Web Dashboard UI (CSS, JS, Marked.js)
+│       ├── index.html       # Main Web Dashboard layout & async template loader
+│       ├── dashboard.html   # Memory stats & layer visualizer template
+│       ├── playground.html  # Chat playground & RAM slider controls template
+│       ├── models.html      # Multi-threaded pull manager & LED matrix template
+│       ├── settings.html    # Directories & HF token settings template
+│       └── apidocs.html     # API documentation & SDK code samples template
+├── mac_app/
+│   └── main.swift           # Native macOS AppKit + WebKit Swift application
+├── build_mac_app.sh         # Script to compile native AirOllama.app bundle
 ├── run_server.sh            # Server launcher script
 ├── requirements.txt         # Python dependencies
 ├── config.json.example      # Sample configuration file

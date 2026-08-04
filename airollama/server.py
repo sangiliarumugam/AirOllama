@@ -790,3 +790,100 @@ async def openai_embeddings(req: EmbeddingRequest):
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# --- Coding Agent Workspace APIs ---
+
+class AgentFileSaveRequest(BaseModel):
+    path: str
+    content: str
+
+class AgentExecRequest(BaseModel):
+    command: str
+
+@app.get("/api/agent/tree")
+async def get_workspace_tree(path: Optional[str] = None):
+    """List project workspace directory tree for Coding Agent IDE."""
+    import os
+    base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+    target_dir = os.path.abspath(path) if path else base_dir
+    
+    if not target_dir.startswith(base_dir) and not os.path.exists(target_dir):
+        target_dir = base_dir
+
+    items = []
+    try:
+        for entry in os.listdir(target_dir):
+            if entry.startswith(".") or entry in ["venv", "__pycache__", "dist", "build", "models"]:
+                continue
+            full_p = os.path.join(target_dir, entry)
+            is_dir = os.path.isdir(full_p)
+            rel_p = os.path.relpath(full_p, base_dir)
+            size = os.path.getsize(full_p) if not is_dir else 0
+            items.append({
+                "name": entry,
+                "path": rel_p,
+                "abs_path": full_p,
+                "is_dir": is_dir,
+                "size": size
+            })
+        items.sort(key=lambda x: (not x["is_dir"], x["name"].lower()))
+        return {"root": base_dir, "current": target_dir, "items": items}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/agent/file")
+async def get_workspace_file(path: str):
+    """Read a workspace file content for Coding Agent IDE."""
+    import os
+    base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+    file_path = os.path.abspath(os.path.join(base_dir, path)) if not os.path.isabs(path) else path
+    
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="File not found")
+    try:
+        with open(file_path, "r", encoding="utf-8", errors="replace") as f:
+            content = f.read()
+        return {"path": path, "abs_path": file_path, "content": content, "size": len(content)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/agent/save")
+async def save_workspace_file(req: AgentFileSaveRequest):
+    """Save updated file content back to workspace."""
+    import os
+    base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+    file_path = os.path.abspath(os.path.join(base_dir, req.path)) if not os.path.isabs(req.path) else req.path
+    try:
+        os.makedirs(os.path.dirname(file_path), exist_ok=True)
+        with open(file_path, "w", encoding="utf-8") as f:
+            f.write(req.content)
+        return {"success": True, "path": req.path, "bytes_written": len(req.content)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/agent/exec")
+async def exec_workspace_command(req: AgentExecRequest):
+    """Execute command in workspace terminal context for Coding Agent."""
+    import subprocess
+    import os
+    base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+    try:
+        proc = subprocess.run(
+            req.command,
+            shell=True,
+            cwd=base_dir,
+            capture_output=True,
+            text=True,
+            timeout=30
+        )
+        return {
+            "command": req.command,
+            "exit_code": proc.returncode,
+            "stdout": proc.stdout,
+            "stderr": proc.stderr
+        }
+    except subprocess.TimeoutExpired:
+        return {"command": req.command, "exit_code": -1, "stdout": "", "stderr": "Command timed out after 30 seconds"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

@@ -698,101 +698,134 @@
       </div>
     </div>
 
-    <!-- Tab 2: Playground -->
+    <!-- Tab 2: Antigravity Coding Agent IDE Playground -->
     <div id="tab-playground" class="view-panel">
-      <div class="chat-container">
-        <div class="chat-sidebar">
-          <h3>Parameters</h3>
-          <div class="form-group">
-            <label>Model</label>
-            <select id="chat-model-select" onchange="onModelSelectChange(this.value)">
-              <option value="">Select or pull a model...</option>
-            </select>
+      <!-- Top Agent Control Bar -->
+      <div class="agent-topbar" style="background: rgba(10, 15, 28, 0.85); border: 1px solid var(--card-border); border-radius: 14px; padding: 0.85rem 1.25rem; margin-bottom: 1rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem;">
+        <div style="display: flex; align-items: center; gap: 0.85rem;">
+          <div style="width: 38px; height: 38px; border-radius: 10px; background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple)); display: flex; align-items: center; justify-content: center; font-size: 1.2rem; color: #000; font-weight: bold; box-shadow: 0 0 16px rgba(0, 242, 254, 0.4);">
+            🤖
+          </div>
+          <div>
+            <div style="font-weight: 700; font-size: 1.05rem; display: flex; align-items: center; gap: 0.5rem;">
+              <span>Antigravity Coding Agent</span>
+              <span style="font-size: 0.72rem; background: rgba(0, 242, 254, 0.15); color: var(--accent-cyan); border: 1px solid rgba(0, 242, 254, 0.3); padding: 2px 8px; border-radius: 12px; font-weight: 600;">ACTIVE AGENT</span>
+            </div>
+            <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 2px;">
+              Autonomous Code Inspection, Multi-File Editing & Terminal Execution
+            </div>
+          </div>
+        </div>
 
-            <div style="display: flex; gap: 0.35rem; margin-top: 0.5rem;">
-              <button class="btn-primary" style="flex: 1; padding: 0.45rem 0.2rem; font-size: 0.78rem; background: var(--accent-cyan); color: #000; font-weight: bold;" onclick="preloadCurrentModel()">⚡ Preload</button>
-              <button class="btn-danger" style="flex: 1; padding: 0.45rem 0.2rem; font-size: 0.78rem;" onclick="unloadActiveModel()">🧹 Unload</button>
-              <button class="btn-primary" style="flex: 1; padding: 0.45rem 0.2rem; font-size: 0.78rem; background: rgba(255, 255, 255, 0.1); color: #fff;" onclick="clearChat()">🆕 Clear</button>
+        <div style="display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap;">
+          <label style="font-size: 0.8rem; color: var(--text-secondary); font-weight: 600;">Agent Role:</label>
+          <select id="agent-role-select" onchange="setAgentRole(this.value)" style="padding: 0.4rem 0.8rem; font-size: 0.82rem; background: rgba(0,0,0,0.5); border-color: rgba(0, 242, 254, 0.4); color: var(--accent-cyan); font-weight: 600;">
+            <option value="pair_programmer">🤖 Pair Programmer (Full Edits & Execution)</option>
+            <option value="architect">🚀 Software Architect (Design & Structure)</option>
+            <option value="debugger">🐛 Bug Hunter & Debugger (Fixes & Tracebacks)</option>
+            <option value="performance">⚡ Performance Engineer (Metal GPU & Memory)</option>
+          </select>
+          <button class="btn-primary" style="padding: 0.4rem 0.8rem; font-size: 0.8rem; background: rgba(0, 242, 254, 0.15); color: var(--accent-cyan); border: 1px solid rgba(0, 242, 254, 0.3);" onclick="loadWorkspaceTree()">🔄 Refresh Files</button>
+          <button class="btn-primary" style="padding: 0.4rem 0.8rem; font-size: 0.8rem; background: rgba(255, 170, 0, 0.15); color: #ffaa00; border: 1px solid rgba(255, 170, 0, 0.3);" onclick="runAgentTestSuite()">▶ Run Tests</button>
+        </div>
+      </div>
+
+      <!-- 3-Column Split Agent Workspace Layout -->
+      <div class="agent-workspace-grid" style="display: grid; grid-template-columns: 240px 1fr 380px; gap: 1rem; height: calc(100vh - 220px); min-height: 650px;">
+        
+        <!-- Column 1: File Explorer -->
+        <div class="card" style="display: flex; flex-direction: column; padding: 0.85rem; overflow: hidden; background: rgba(10, 15, 28, 0.7);">
+          <div style="display: flex; align-items: center; justify-content: space-between; padding-bottom: 0.6rem; border-bottom: 1px solid var(--card-border); margin-bottom: 0.6rem;">
+            <span style="font-weight: 700; font-size: 0.85rem; color: var(--text-main); display: flex; align-items: center; gap: 0.35rem;">
+              📁 Workspace Files
+            </span>
+            <span id="file-tree-count" style="font-size: 0.72rem; color: var(--text-muted);">0 items</span>
+          </div>
+
+          <div id="agent-file-tree" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 0.25rem;">
+            <div style="color: var(--text-muted); font-size: 0.8rem; padding: 0.5rem; text-align: center;">Loading workspace files...</div>
+          </div>
+        </div>
+
+        <!-- Column 2: Live Code Workspace & Diff Inspector -->
+        <div class="card" style="display: flex; flex-direction: column; padding: 0; overflow: hidden; background: rgba(8, 12, 22, 0.95); border-color: rgba(0, 242, 254, 0.25);">
+          <!-- Editor Header Tab Bar -->
+          <div style="background: rgba(0, 0, 0, 0.5); padding: 0.5rem 0.85rem; border-bottom: 1px solid var(--card-border); display: flex; align-items: center; justify-content: space-between;">
+            <div id="editor-active-filename" style="font-family: 'JetBrains Mono', monospace; font-size: 0.85rem; font-weight: 600; color: var(--accent-cyan); display: flex; align-items: center; gap: 0.4rem;">
+              📄 index.html
+            </div>
+            <div style="display: flex; gap: 0.4rem;">
+              <button class="btn-primary" style="padding: 0.3rem 0.65rem; font-size: 0.75rem; background: rgba(0, 242, 254, 0.15); color: var(--accent-cyan); border: 1px solid rgba(0, 242, 254, 0.3);" onclick="saveActiveFileContent()">💾 Save File</button>
+              <button class="btn-primary" style="padding: 0.3rem 0.65rem; font-size: 0.75rem; background: rgba(255, 255, 255, 0.1); color: #fff;" onclick="toggleDiffMode()">🔍 Toggle Diff View</button>
+            </div>
+          </div>
+
+          <!-- Code Content Area -->
+          <div style="flex: 1; position: relative; overflow: hidden;">
+            <textarea id="agent-code-editor" style="width: 100%; height: 100%; box-sizing: border-box; background: transparent; border: none; color: #e2e8f0; font-family: 'JetBrains Mono', monospace; font-size: 0.83rem; line-height: 1.5; padding: 1rem; resize: none; outline: none;" spellcheck="false" placeholder="// Select a file from the workspace explorer to view or edit code..."></textarea>
+            <div id="agent-diff-container" style="display: none; width: 100%; height: 100%; overflow: auto; padding: 1rem; box-sizing: border-box; font-family: 'JetBrains Mono', monospace; font-size: 0.82rem; line-height: 1.5; background: #070a12;">
+              <pre id="agent-diff-content" style="margin: 0; color: #cbd5e1;"></pre>
+            </div>
+          </div>
+
+          <!-- Bottom Terminal Execution Drawer -->
+          <div style="background: rgba(0, 0, 0, 0.7); border-top: 1px solid var(--card-border); padding: 0.6rem 0.85rem; max-height: 160px; overflow-y: auto;">
+            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.35rem;">
+              <span>🖥️ Terminal Output & Test Console</span>
+              <span id="exec-status-badge" style="color: var(--accent-cyan);">Ready</span>
+            </div>
+            <pre id="agent-terminal-output" style="margin: 0; font-family: 'JetBrains Mono', monospace; font-size: 0.78rem; color: #38bdf8; word-break: break-word; white-space: pre-wrap;">> Antigravity Agent Environment Initialized.</pre>
+          </div>
+        </div>
+
+        <!-- Column 3: Agent Chat & Reasoning Panel -->
+        <div class="chat-main" style="display: flex; flex-direction: column; background: rgba(10, 15, 28, 0.85); border: 1px solid var(--card-border); border-radius: 16px; overflow: hidden;">
+          <!-- Model & Parameter Quick Bar -->
+          <div style="padding: 0.75rem 1rem; border-bottom: 1px solid var(--card-border); background: rgba(0,0,0,0.3); display: flex; flex-direction: column; gap: 0.5rem;">
+            <div style="display: flex; gap: 0.4rem; align-items: center;">
+              <select id="chat-model-select" onchange="onModelSelectChange(this.value)" style="flex: 1; padding: 0.4rem 0.6rem; font-size: 0.8rem; background: rgba(0,0,0,0.5);">
+                <option value="">Select or pull a model...</option>
+              </select>
+              <button class="btn-primary" style="padding: 0.4rem 0.6rem; font-size: 0.75rem; background: var(--accent-cyan); color: #000; font-weight: bold;" onclick="preloadCurrentModel()">⚡ Preload</button>
+              <button class="btn-danger" style="padding: 0.4rem 0.6rem; font-size: 0.75rem;" onclick="unloadActiveModel()">🧹 Unload</button>
             </div>
 
-          </div>
-
-
-          <div class="form-group" style="background: rgba(0, 242, 254, 0.05); padding: 0.75rem; border-radius: 8px; border: 1px solid rgba(0, 242, 254, 0.2); margin-top: 1rem;">
-            <label style="display: flex; align-items: center; justify-content: space-between; cursor: pointer; color: var(--accent-cyan); font-weight: 600;">
-              <span>🌐 Live Web Search</span>
-              <input type="checkbox" id="param-websearch" style="width: auto;">
-            </label>
-          </div>
-
-
-          <div class="form-group" style="background: rgba(157, 78, 221, 0.05); padding: 0.75rem; border-radius: 8px; border: 1px solid rgba(157, 78, 221, 0.2);">
-            <label style="display: flex; align-items: center; justify-content: space-between; cursor: pointer; color: #d8b4fe; font-weight: 600;">
-              <span>📍 System Location</span>
-              <input type="checkbox" id="param-location-toggle" checked style="width: auto;">
-            </label>
-            <input type="text" id="param-location-input" placeholder="Detecting location..." style="margin-top: 0.4rem; font-size: 0.8rem; background: rgba(0, 0, 0, 0.4); border: 1px solid rgba(157, 78, 221, 0.3); color: #fff; border-radius: 6px; padding: 0.4rem; width: 100%;">
-          </div>
-
-
-          <div class="form-group" id="ram-cap-container" style="background: rgba(0, 242, 254, 0.05); padding: 0.85rem; border-radius: 12px; border: 1px solid rgba(0, 242, 254, 0.3); transition: opacity 0.3s ease;">
-            <label style="display: flex; align-items: center; justify-content: space-between; color: var(--accent-cyan); font-weight: 600;">
-              <span>⚡ RAM & Speed Cap</span>
-              <span id="ram-slider-val" style="font-size: 0.8rem; color: #fff; background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple)); padding: 3px 10px; border-radius: 6px; font-weight: bold;">8 GB</span>
-            </label>
-            <input type="range" id="param-max-ram" min="2" max="48" step="1" value="8" style="width: 100%; margin-top: 0.6rem;" oninput="updateRamCapBadge(this.value)" onchange="onRamCapChanged(this.value)">
-
-            <div id="ram-speed-preset-info" style="font-size: 0.78rem; color: var(--accent-cyan); margin-top: 0.4rem; font-weight: 500;">
-              🚀 Higher RAM = Faster output response (More layers active in GPU VRAM)
+            <div style="display: flex; align-items: center; justify-content: space-between; font-size: 0.75rem; color: var(--accent-cyan);">
+              <span>⚡ Speed Cap: <strong id="ram-slider-val">8 GB</strong></span>
+              <input type="range" id="param-max-ram" min="2" max="48" step="1" value="8" style="width: 110px;" oninput="updateRamCapBadge(this.value)" onchange="onRamCapChanged(this.value)">
             </div>
             
-            <div id="ram-preset-buttons" style="display: flex; gap: 0.35rem; margin-top: 0.6rem;">
-              <button type="button" class="btn-primary" style="flex: 1; padding: 0.35rem 0.2rem; font-size: 0.72rem; background: rgba(255, 170, 0, 0.15); color: #ffaa00; border: 1px solid rgba(255, 170, 0, 0.3);" onclick="setRamPreset('min')">🐢 Min RAM</button>
-              <button type="button" class="btn-primary" style="flex: 1; padding: 0.35rem 0.2rem; font-size: 0.72rem; background: rgba(157, 78, 221, 0.2); color: #d8b4fe; border: 1px solid rgba(157, 78, 221, 0.4);" onclick="setRamPreset('balanced')">⚡ Balanced</button>
-              <button type="button" class="btn-primary" style="flex: 1; padding: 0.35rem 0.2rem; font-size: 0.72rem; background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple)); color: #000; font-weight: bold;" onclick="setRamPreset('max')">🚀 Max Speed</button>
+            <div style="display: flex; gap: 0.5rem; font-size: 0.75rem; color: var(--text-muted); justify-content: space-between;">
+              <label><input type="checkbox" id="param-websearch" style="width: auto;"> 🌐 Web</label>
+              <label><input type="checkbox" id="param-location-toggle" checked style="width: auto;"> 📍 Location</label>
+              <span id="tps-display" style="color: var(--accent-cyan); font-weight: bold;">0.0 tok/s</span>
             </div>
-
-            <!-- Token Per Second Live Metric Card -->
-            <div id="tok-speed-card" style="margin-top: 0.75rem; padding: 0.55rem 0.75rem; background: rgba(0, 242, 254, 0.06); border: 1px solid rgba(0, 242, 254, 0.2); border-radius: 8px; display: flex; align-items: center; justify-content: space-between;">
-              <div style="font-size: 0.76rem; color: var(--text-secondary); font-weight: 600; display: flex; align-items: center; gap: 0.3rem;">
-                ⚡ Generation Speed:
-              </div>
-              <div id="tps-display" style="font-size: 0.95rem; font-weight: 800; color: var(--accent-cyan); font-family: monospace;">
-                0.0 tok/s
-              </div>
-            </div>
+            
+            <!-- Hidden parameters kept for API mapping -->
+            <input type="hidden" id="param-temp" value="0.7">
+            <input type="hidden" id="param-tokens" value="2048">
+            <input type="hidden" id="param-location-input" value="">
+            <textarea id="param-system" style="display: none;"></textarea>
           </div>
 
-
-
-          <div class="form-group">
-            <label>Temperature</label>
-            <input type="number" id="param-temp" value="0.7" step="0.1" min="0" max="2">
-          </div>
-          <div class="form-group">
-            <label>Max Output Tokens</label>
-            <input type="number" id="param-tokens" value="2048" step="128" min="64" max="4096">
-          </div>
-
-
-          <div class="form-group">
-            <label>System Prompt</label>
-            <textarea id="param-system" rows="3" placeholder="You are a helpful AI assistant..."></textarea>
-          </div>
-
-        </div>
-        <div class="chat-main">
-          <div class="chat-messages" id="chat-messages">
+          <!-- Chat Messages Area -->
+          <div class="chat-messages" id="chat-messages" style="flex: 1; padding: 1rem; overflow-y: auto; display: flex; flex-direction: column; gap: 0.75rem;">
             <div class="msg assistant">
-              <p>👋 Hello! I am <strong>AirOllama</strong>. Select a model and send a message to start streaming layer-by-layer inference.</p>
+              <p>🤖 👋 Welcome to <strong>AirOllama Antigravity Agent</strong>!</p>
+              <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.4rem;">
+                I am your pair programmer agent on macOS. Select a workspace file on the left or type your coding instruction below to analyze, edit, and test code live!
+              </p>
             </div>
           </div>
-          <form id="chat-form" class="chat-input-area" onsubmit="handleChatSubmit(event)">
-            <input type="text" id="chat-input" placeholder="Ask a question..." autocomplete="off">
-            <button type="submit" class="btn-primary" id="btn-chat-send">Send 🚀</button>
-            <button type="button" class="btn-danger" id="btn-chat-stop" onclick="stopGeneration()" style="display: none;">🛑 Stop</button>
+
+          <!-- Prompt Form -->
+          <form id="chat-form" class="chat-input-area" onsubmit="handleChatSubmit(event)" style="padding: 0.75rem 1rem;">
+            <input type="text" id="chat-input" placeholder="Instruct agent (e.g. 'Fix layer layout in index.html')..." autocomplete="off">
+            <button type="submit" class="btn-primary" id="btn-chat-send">Agent 🚀</button>
+            <button type="button" class="btn-danger" id="btn-chat-stop" onclick="stopGeneration()" style="display: none;">Stop 🛑</button>
           </form>
         </div>
+
       </div>
     </div>
 
@@ -985,6 +1018,172 @@ print(response.choices[0].message.content)</div>
     });
 
 
+    // --- Antigravity Agentic IDE Functions ---
+    let currentActiveFilePath = '';
+    let currentAgentRole = 'pair_programmer';
+
+    const AGENT_SYSTEM_PROMPTS = {
+      pair_programmer: "You are Antigravity, an autonomous AI pair programming agent. You help inspect files, write production code, debug errors, and structure clean software.",
+      architect: "You are Antigravity System Architect. You focus on software design, modular component structure, API contracts, and high-level architectural blueprints.",
+      debugger: "You are Antigravity Bug Hunter & Debugger. You analyze stack traces, inspect error logs, locate failing lines of code, and provide targeted bug fixes.",
+      performance: "You are Antigravity Performance Engineer. You optimize memory usage, Apple Silicon Metal GPU layer streaming, and parallel matrix operations."
+    };
+
+    function setAgentRole(role) {
+      currentAgentRole = role;
+      const sysArea = document.getElementById('param-system');
+      if (sysArea) {
+        sysArea.value = AGENT_SYSTEM_PROMPTS[role] || AGENT_SYSTEM_PROMPTS.pair_programmer;
+      }
+      const term = document.getElementById('agent-terminal-output');
+      if (term) {
+        term.innerText += `\n> Agent role switched to: ${role.toUpperCase()}`;
+        term.scrollTop = term.scrollHeight;
+      }
+    }
+
+    async function loadWorkspaceTree() {
+      const container = document.getElementById('agent-file-tree');
+      const countBadge = document.getElementById('file-tree-count');
+      if (!container) return;
+      try {
+        const res = await fetch('/api/agent/tree');
+        const data = await res.json();
+        if (!data.items || data.items.length === 0) {
+          container.innerHTML = '<div style="color: var(--text-muted); font-size: 0.8rem; padding: 0.5rem;">No files found</div>';
+          return;
+        }
+        if (countBadge) countBadge.innerText = `${data.items.length} items`;
+        
+        container.innerHTML = '';
+        data.items.forEach(item => {
+          const div = document.createElement('div');
+          div.style.cssText = `
+            display: flex; align-items: center; gap: 0.4rem; padding: 0.35rem 0.6rem;
+            border-radius: 6px; font-size: 0.8rem; font-family: 'JetBrains Mono', monospace;
+            cursor: pointer; transition: background 0.15s ease; color: ${item.is_dir ? 'var(--accent-cyan)' : '#cbd5e1'};
+          `;
+          div.onmouseenter = () => div.style.background = 'rgba(0, 242, 254, 0.08)';
+          div.onmouseleave = () => div.style.background = (currentActiveFilePath === item.path) ? 'rgba(0, 242, 254, 0.15)' : 'transparent';
+          if (currentActiveFilePath === item.path) div.style.background = 'rgba(0, 242, 254, 0.15)';
+
+          let icon = item.is_dir ? '📁' : '📄';
+          if (item.name.endsWith('.py')) icon = '🐍';
+          else if (item.name.endsWith('.html')) icon = '🌐';
+          else if (item.name.endsWith('.js')) icon = '⚡';
+          else if (item.name.endsWith('.md')) icon = '📜';
+          else if (item.name.endsWith('.sh')) icon = '⚙️';
+          else if (item.name.endsWith('.json')) icon = '🔧';
+
+          div.innerHTML = `<span>${icon}</span><span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1;">${item.name}</span>`;
+          if (!item.is_dir) {
+            div.onclick = () => openWorkspaceFile(item.path);
+          }
+          container.appendChild(div);
+        });
+
+        if (!currentActiveFilePath && data.items.some(i => i.name === 'index.html' || i.name.endsWith('.py'))) {
+          const defaultFile = data.items.find(i => i.name === 'index.html') || data.items.find(i => !i.is_dir);
+          if (defaultFile) openWorkspaceFile(defaultFile.path);
+        }
+      } catch (e) {
+        console.error("Failed to load workspace tree", e);
+      }
+    }
+
+    async function openWorkspaceFile(path) {
+      currentActiveFilePath = path;
+      const fileNameEl = document.getElementById('editor-active-filename');
+      const editor = document.getElementById('agent-code-editor');
+      if (fileNameEl) fileNameEl.innerText = `📄 ${path}`;
+      
+      try {
+        const res = await fetch(`/api/agent/file?path=${encodeURIComponent(path)}`);
+        const data = await res.json();
+        if (editor) {
+          editor.value = data.content || '';
+        }
+        loadWorkspaceTree();
+      } catch (e) {
+        console.error("Failed to read file", e);
+      }
+    }
+
+    async function saveActiveFileContent() {
+      if (!currentActiveFilePath) return;
+      const editor = document.getElementById('agent-code-editor');
+      const content = editor ? editor.value : '';
+      const term = document.getElementById('agent-terminal-output');
+      
+      try {
+        const res = await fetch('/api/agent/save', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ path: currentActiveFilePath, content: content })
+        });
+        const data = await res.json();
+        if (data.success) {
+          if (term) {
+            term.innerText += `\n✅ Saved file '${currentActiveFilePath}' (${data.bytes_written} bytes)`;
+            term.scrollTop = term.scrollHeight;
+          }
+        }
+      } catch (e) {
+        console.error("Save failed", e);
+      }
+    }
+
+    async function runAgentTestSuite() {
+      const term = document.getElementById('agent-terminal-output');
+      const badge = document.getElementById('exec-status-badge');
+      if (badge) badge.innerText = 'Running tests... ⏳';
+      if (term) {
+        term.innerText += '\n\n> Running automated test suite: python tests/test_server.py && python tests/test_ui.py...';
+        term.scrollTop = term.scrollHeight;
+      }
+      try {
+        const res = await fetch('/api/agent/exec', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ command: '/Users/sangili/Projects/airollama/venv/bin/python tests/test_server.py && /Users/sangili/Projects/airollama/venv/bin/python tests/test_ui.py' })
+        });
+        const data = await res.json();
+        if (badge) badge.innerText = (data.exit_code === 0) ? 'Passed ✅' : 'Failed ❌';
+        if (term) {
+          term.innerText += `\n${data.stdout || ''}\n${data.stderr || ''}\n> Exit Code: ${data.exit_code}`;
+          term.scrollTop = term.scrollHeight;
+        }
+      } catch (e) {
+        if (badge) badge.innerText = 'Error ❌';
+        console.error("Exec failed", e);
+      }
+    }
+
+    function toggleDiffMode() {
+      const editor = document.getElementById('agent-code-editor');
+      const diffContainer = document.getElementById('agent-diff-container');
+      const diffContent = document.getElementById('agent-diff-content');
+      
+      if (!diffContainer) return;
+      if (diffContainer.style.display === 'none') {
+        diffContainer.style.display = 'block';
+        if (editor) editor.style.display = 'none';
+        const lines = (editor ? editor.value : '').split('\n');
+        let formatted = '';
+        lines.forEach(line => {
+          if (line.includes('function') || line.includes('def ') || line.includes('class ')) {
+            formatted += `<span style="color: #4ade80;">+ ${line}</span>\n`;
+          } else {
+            formatted += `  ${line}\n`;
+          }
+        });
+        if (diffContent) diffContent.innerHTML = formatted;
+      } else {
+        diffContainer.style.display = 'none';
+        if (editor) editor.style.display = 'block';
+      }
+    }
+
     function switchTab(name) {
       document.querySelectorAll('.tab-btn').forEach(btn => {
         btn.classList.remove('active');
@@ -999,8 +1198,11 @@ print(response.choices[0].message.content)</div>
         targetPanel.classList.add('active');
       }
 
+      if (name === 'playground') {
+        loadWorkspaceTree();
+      }
+
       if (name === 'models') {
-        // Re-stagger active download thread LED blinks so returning to the download tab never synchronizes animations
         const activeDots = document.querySelectorAll('#led-dot-matrix .led-dot.active');
         activeDots.forEach((dot, idx) => {
           const delay = ((idx * 0.173 + Math.random() * 0.15 + 0.05) % 0.75).toFixed(2);

@@ -801,12 +801,24 @@ class AgentFileSaveRequest(BaseModel):
 class AgentExecRequest(BaseModel):
     command: str
 
+from airollama import database as db
+
+def resolve_base_dir(path: Optional[str] = None, project_id: Optional[int] = None) -> str:
+    import os
+    if project_id is not None:
+        proj = db.get_project(project_id)
+        if proj and os.path.exists(proj["path"]):
+            return proj["path"]
+    if path and os.path.isabs(path) and os.path.exists(path):
+        return path
+    return os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+
 @app.get("/api/agent/tree")
-async def get_workspace_tree(path: Optional[str] = None):
+async def get_workspace_tree(path: Optional[str] = None, project_id: Optional[int] = None):
     """List project workspace directory tree for Coding Agent IDE."""
     import os
-    base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-    target_dir = os.path.abspath(path) if path else base_dir
+    base_dir = resolve_base_dir(path, project_id)
+    target_dir = os.path.abspath(path) if (path and os.path.exists(path)) else base_dir
     
     if not target_dir.startswith(base_dir) and not os.path.exists(target_dir):
         target_dir = base_dir
@@ -814,7 +826,7 @@ async def get_workspace_tree(path: Optional[str] = None):
     items = []
     try:
         for entry in os.listdir(target_dir):
-            if entry.startswith(".") or entry in ["venv", "__pycache__", "dist", "build", "models"]:
+            if entry.startswith(".") or entry in ["venv", "__pycache__", "dist", "build", "models", "node_modules"]:
                 continue
             full_p = os.path.join(target_dir, entry)
             is_dir = os.path.isdir(full_p)
@@ -833,10 +845,10 @@ async def get_workspace_tree(path: Optional[str] = None):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/agent/file")
-async def get_workspace_file(path: str):
+async def get_workspace_file(path: str, project_id: Optional[int] = None):
     """Read a workspace file content for Coding Agent IDE."""
     import os
-    base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+    base_dir = resolve_base_dir(None, project_id)
     file_path = os.path.abspath(os.path.join(base_dir, path)) if not os.path.isabs(path) else path
     
     if not os.path.exists(file_path):
@@ -849,10 +861,10 @@ async def get_workspace_file(path: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/agent/save")
-async def save_workspace_file(req: AgentFileSaveRequest):
+async def save_workspace_file(req: AgentFileSaveRequest, project_id: Optional[int] = None):
     """Save updated file content back to workspace."""
     import os
-    base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+    base_dir = resolve_base_dir(None, project_id)
     file_path = os.path.abspath(os.path.join(base_dir, req.path)) if not os.path.isabs(req.path) else req.path
     try:
         os.makedirs(os.path.dirname(file_path), exist_ok=True)
@@ -863,11 +875,11 @@ async def save_workspace_file(req: AgentFileSaveRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/agent/exec")
-async def exec_workspace_command(req: AgentExecRequest):
+async def exec_workspace_command(req: AgentExecRequest, project_id: Optional[int] = None):
     """Execute command in workspace terminal context for Coding Agent."""
     import subprocess
     import os
-    base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+    base_dir = resolve_base_dir(None, project_id)
     try:
         proc = subprocess.run(
             req.command,
@@ -887,3 +899,60 @@ async def exec_workspace_command(req: AgentExecRequest):
         return {"command": req.command, "exit_code": -1, "stdout": "", "stderr": "Command timed out after 30 seconds"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# --- Project & Conversation Database Endpoints ---
+
+class CreateProjectRequest(BaseModel):
+    name: str
+    path: str
+
+class CreateConversationRequest(BaseModel):
+    project_id: Optional[int] = None
+    title: Optional[str] = "New Coding Thread"
+    model: Optional[str] = ""
+    role: Optional[str] = ""
+
+class SaveMessageRequest(BaseModel):
+    role: str
+    content: str
+    thought: Optional[str] = None
+
+@app.get("/api/projects")
+async def api_list_projects():
+    return {"projects": db.list_projects()}
+
+@app.post("/api/projects")
+async def api_create_project(req: CreateProjectRequest):
+    if not req.name or not req.path:
+        raise HTTPException(status_code=400, detail="Name and path are required")
+    proj = db.create_project(req.name, req.path)
+    return proj
+
+@app.delete("/api/projects/{project_id}")
+async def api_delete_project(project_id: int):
+    db.delete_project(project_id)
+    return {"success": True}
+
+@app.get("/api/conversations")
+async def api_list_conversations(project_id: Optional[int] = None):
+    return {"conversations": db.list_conversations(project_id)}
+
+@app.post("/api/conversations")
+async def api_create_conversation(req: CreateConversationRequest):
+    conv = db.create_conversation(req.project_id, req.title or "New Coding Thread", req.model or "", req.role or "")
+    return conv
+
+@app.delete("/api/conversations/{conversation_id}")
+async def api_delete_conversation(conversation_id: str):
+    db.delete_conversation(conversation_id)
+    return {"success": True}
+
+@app.get("/api/conversations/{conversation_id}/messages")
+async def api_get_messages(conversation_id: str):
+    return {"messages": db.get_conversation_messages(conversation_id)}
+
+@app.post("/api/conversations/{conversation_id}/messages")
+async def api_save_message(conversation_id: str, req: SaveMessageRequest):
+    msg = db.add_message(conversation_id, req.role, req.content, req.thought)
+    return msg

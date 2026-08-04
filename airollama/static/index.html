@@ -718,15 +718,31 @@
         </div>
 
         <div style="display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap;">
-          <label style="font-size: 0.8rem; color: var(--text-secondary); font-weight: 600;">Agent Role:</label>
-          <select id="agent-role-select" onchange="setAgentRole(this.value)" style="padding: 0.4rem 0.8rem; font-size: 0.82rem; background: rgba(0,0,0,0.5); border-color: rgba(0, 242, 254, 0.4); color: var(--accent-cyan); font-weight: 600;">
-            <option value="pair_programmer">🤖 Pair Programmer (Full Edits & Execution)</option>
-            <option value="architect">🚀 Software Architect (Design & Structure)</option>
-            <option value="debugger">🐛 Bug Hunter & Debugger (Fixes & Tracebacks)</option>
-            <option value="performance">⚡ Performance Engineer (Metal GPU & Memory)</option>
+          <div style="display: flex; align-items: center; gap: 0.35rem;">
+            <label style="font-size: 0.8rem; color: var(--text-secondary); font-weight: 600;">📁 Project:</label>
+            <select id="agent-project-select" onchange="onProjectSelectChange(this.value)" style="padding: 0.4rem 0.6rem; font-size: 0.82rem; background: rgba(0,0,0,0.5); border-color: rgba(0, 242, 254, 0.4); color: var(--accent-cyan); font-weight: 600; max-width: 170px;">
+              <option value="">Loading Projects...</option>
+            </select>
+            <button class="btn-primary" style="padding: 0.38rem 0.6rem; font-size: 0.78rem; background: rgba(0, 242, 254, 0.2); color: var(--accent-cyan); border: 1px solid rgba(0, 242, 254, 0.4);" onclick="promptCreateProject()">➕ Project</button>
+          </div>
+
+          <div style="display: flex; align-items: center; gap: 0.35rem;">
+            <label style="font-size: 0.8rem; color: var(--text-secondary); font-weight: 600;">💬 Thread:</label>
+            <select id="agent-conversation-select" onchange="onConversationSelectChange(this.value)" style="padding: 0.4rem 0.6rem; font-size: 0.82rem; background: rgba(0,0,0,0.5); border-color: rgba(157, 78, 221, 0.4); color: #d8b4fe; font-weight: 600; max-width: 170px;">
+              <option value="">Loading Threads...</option>
+            </select>
+            <button class="btn-primary" style="padding: 0.38rem 0.6rem; font-size: 0.78rem; background: rgba(157, 78, 221, 0.2); color: #d8b4fe; border: 1px solid rgba(157, 78, 221, 0.4);" onclick="createNewConversationThread()">💬 + Thread</button>
+          </div>
+
+          <label style="font-size: 0.8rem; color: var(--text-secondary); font-weight: 600;">Role:</label>
+          <select id="agent-role-select" onchange="setAgentRole(this.value)" style="padding: 0.4rem 0.6rem; font-size: 0.82rem; background: rgba(0,0,0,0.5); border-color: rgba(0, 242, 254, 0.4); color: var(--accent-cyan); font-weight: 600;">
+            <option value="pair_programmer">🤖 Pair Programmer</option>
+            <option value="architect">🚀 Software Architect</option>
+            <option value="debugger">🐛 Bug Hunter</option>
+            <option value="performance">⚡ Performance Eng</option>
           </select>
-          <button class="btn-primary" style="padding: 0.4rem 0.8rem; font-size: 0.8rem; background: rgba(0, 242, 254, 0.15); color: var(--accent-cyan); border: 1px solid rgba(0, 242, 254, 0.3);" onclick="loadWorkspaceTree()">🔄 Refresh Files</button>
-          <button class="btn-primary" style="padding: 0.4rem 0.8rem; font-size: 0.8rem; background: rgba(255, 170, 0, 0.15); color: #ffaa00; border: 1px solid rgba(255, 170, 0, 0.3);" onclick="runAgentTestSuite()">▶ Run Tests</button>
+          <button class="btn-primary" style="padding: 0.38rem 0.6rem; font-size: 0.78rem; background: rgba(0, 242, 254, 0.15); color: var(--accent-cyan); border: 1px solid rgba(0, 242, 254, 0.3);" onclick="loadWorkspaceTree()">🔄 Files</button>
+          <button class="btn-primary" style="padding: 0.38rem 0.6rem; font-size: 0.78rem; background: rgba(255, 170, 0, 0.15); color: #ffaa00; border: 1px solid rgba(255, 170, 0, 0.3);" onclick="runAgentTestSuite()">▶ Tests</button>
         </div>
       </div>
 
@@ -1015,12 +1031,15 @@ print(response.choices[0].message.content)</div>
           }
         });
       }
+      loadProjectsList();
     });
 
 
     // --- Antigravity Agentic IDE Functions ---
     let currentActiveFilePath = '';
     let currentAgentRole = 'pair_programmer';
+    let currentProjectId = null;
+    let currentConversationId = null;
 
     const AGENT_SYSTEM_PROMPTS = {
       pair_programmer: "You are Antigravity, an autonomous AI pair programming agent. You help inspect files, write production code, debug errors, and structure clean software.",
@@ -1028,6 +1047,163 @@ print(response.choices[0].message.content)</div>
       debugger: "You are Antigravity Bug Hunter & Debugger. You analyze stack traces, inspect error logs, locate failing lines of code, and provide targeted bug fixes.",
       performance: "You are Antigravity Performance Engineer. You optimize memory usage, Apple Silicon Metal GPU layer streaming, and parallel matrix operations."
     };
+
+    async function loadProjectsList() {
+      const select = document.getElementById('agent-project-select');
+      if (!select) return;
+      try {
+        const res = await fetch('/api/projects');
+        const data = await res.json();
+        select.innerHTML = '';
+        if (data.projects && data.projects.length > 0) {
+          data.projects.forEach(p => {
+            const opt = document.createElement('option');
+            opt.value = p.id;
+            opt.innerText = p.name;
+            select.appendChild(opt);
+          });
+          if (!currentProjectId) {
+            currentProjectId = data.projects[0].id;
+          }
+          select.value = currentProjectId;
+        } else {
+          select.innerHTML = '<option value="">No Projects</option>';
+        }
+        await loadConversationsList(currentProjectId);
+        await loadWorkspaceTree();
+      } catch (e) {
+        console.error("Failed to load projects", e);
+      }
+    }
+
+    async function onProjectSelectChange(val) {
+      if (!val) return;
+      currentProjectId = parseInt(val, 10);
+      currentActiveFilePath = '';
+      await loadConversationsList(currentProjectId);
+      await loadWorkspaceTree();
+    }
+
+    async function promptCreateProject() {
+      const name = prompt("Enter Project Name:", "My AI Project");
+      if (!name) return;
+      const path = prompt("Enter Local Drive Directory Path:", "/Users/sangili/Projects");
+      if (!path) return;
+      try {
+        const res = await fetch('/api/projects', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: name, path: path })
+        });
+        const newProj = await res.json();
+        if (newProj.id) {
+          currentProjectId = newProj.id;
+          await loadProjectsList();
+          alert(`✅ Project '${newProj.name}' created at ${newProj.path}!`);
+        }
+      } catch (e) {
+        alert("Failed to create project: " + e.message);
+      }
+    }
+
+    async function loadConversationsList(projectId) {
+      const select = document.getElementById('agent-conversation-select');
+      if (!select) return;
+      try {
+        const url = projectId ? `/api/conversations?project_id=${projectId}` : '/api/conversations';
+        const res = await fetch(url);
+        const data = await res.json();
+        select.innerHTML = '';
+        if (data.conversations && data.conversations.length > 0) {
+          data.conversations.forEach(c => {
+            const opt = document.createElement('option');
+            opt.value = c.id;
+            opt.innerText = c.title;
+            select.appendChild(opt);
+          });
+          if (!currentConversationId || !data.conversations.some(c => c.id === currentConversationId)) {
+            currentConversationId = data.conversations[0].id;
+          }
+          select.value = currentConversationId;
+          await loadConversationMessages(currentConversationId);
+        } else {
+          await createNewConversationThread();
+        }
+      } catch (e) {
+        console.error("Failed to load conversations", e);
+      }
+    }
+
+    async function onConversationSelectChange(val) {
+      if (!val) return;
+      currentConversationId = val;
+      await loadConversationMessages(currentConversationId);
+    }
+
+    async function createNewConversationThread() {
+      const title = prompt("Thread Title:", "New Coding Thread") || "New Coding Thread";
+      try {
+        const res = await fetch('/api/conversations', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            project_id: currentProjectId,
+            title: title,
+            role: currentAgentRole
+          })
+        });
+        const newConv = await res.json();
+        if (newConv.id) {
+          currentConversationId = newConv.id;
+          await loadConversationsList(currentProjectId);
+        }
+      } catch (e) {
+        console.error("Failed to create thread", e);
+      }
+    }
+
+    async function loadConversationMessages(conversationId) {
+      const container = document.getElementById('chat-messages');
+      if (!container) return;
+      try {
+        const res = await fetch(`/api/conversations/${conversationId}/messages`);
+        const data = await res.json();
+        container.innerHTML = '';
+        if (!data.messages || data.messages.length === 0) {
+          container.innerHTML = `
+            <div class="msg assistant">
+              <p>🤖 👋 Thread initialized. Type your coding prompt to persist discussion in SQLite!</p>
+            </div>`;
+          return;
+        }
+        data.messages.forEach(m => {
+          const div = document.createElement('div');
+          div.className = `msg ${m.role}`;
+          let html = `<p>${m.content.replace(/\n/g, '<br>')}</p>`;
+          if (m.thought) {
+            html = `<details style="margin-bottom: 0.5rem; background: rgba(0, 242, 254, 0.05); padding: 0.4rem; border-radius: 6px; border: 1px solid rgba(0, 242, 254, 0.2);"><summary style="cursor: pointer; font-size: 0.78rem; color: var(--accent-cyan);">🧠 Agent Thinking...</summary><p style="font-size: 0.8rem; color: #a0aec0; margin-top: 0.3rem;">${m.thought}</p></details>` + html;
+          }
+          div.innerHTML = html;
+          container.appendChild(div);
+        });
+        container.scrollTop = container.scrollHeight;
+      } catch (e) {
+        console.error("Failed to load messages", e);
+      }
+    }
+
+    async function persistMessage(role, content, thought = null) {
+      if (!currentConversationId) return;
+      try {
+        await fetch(`/api/conversations/${currentConversationId}/messages`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ role: role, content: content, thought: thought })
+        });
+      } catch (e) {
+        console.error("Failed to persist message", e);
+      }
+    }
 
     function setAgentRole(role) {
       currentAgentRole = role;
@@ -1047,7 +1223,8 @@ print(response.choices[0].message.content)</div>
       const countBadge = document.getElementById('file-tree-count');
       if (!container) return;
       try {
-        const res = await fetch('/api/agent/tree');
+        const url = currentProjectId ? `/api/agent/tree?project_id=${currentProjectId}` : '/api/agent/tree';
+        const res = await fetch(url);
         const data = await res.json();
         if (!data.items || data.items.length === 0) {
           container.innerHTML = '<div style="color: var(--text-muted); font-size: 0.8rem; padding: 0.5rem;">No files found</div>';
@@ -1098,7 +1275,8 @@ print(response.choices[0].message.content)</div>
       if (fileNameEl) fileNameEl.innerText = `📄 ${path}`;
       
       try {
-        const res = await fetch(`/api/agent/file?path=${encodeURIComponent(path)}`);
+        const url = currentProjectId ? `/api/agent/file?path=${encodeURIComponent(path)}&project_id=${currentProjectId}` : `/api/agent/file?path=${encodeURIComponent(path)}`;
+        const res = await fetch(url);
         const data = await res.json();
         if (editor) {
           editor.value = data.content || '';
@@ -1116,7 +1294,8 @@ print(response.choices[0].message.content)</div>
       const term = document.getElementById('agent-terminal-output');
       
       try {
-        const res = await fetch('/api/agent/save', {
+        const url = currentProjectId ? `/api/agent/save?project_id=${currentProjectId}` : '/api/agent/save';
+        const res = await fetch(url, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ path: currentActiveFilePath, content: content })
@@ -1142,7 +1321,8 @@ print(response.choices[0].message.content)</div>
         term.scrollTop = term.scrollHeight;
       }
       try {
-        const res = await fetch('/api/agent/exec', {
+        const url = currentProjectId ? `/api/agent/exec?project_id=${currentProjectId}` : '/api/agent/exec';
+        const res = await fetch(url, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ command: '/Users/sangili/Projects/airollama/venv/bin/python tests/test_server.py && /Users/sangili/Projects/airollama/venv/bin/python tests/test_ui.py' })
@@ -2023,6 +2203,7 @@ print(response.choices[0].message.content)</div>
       userMsg.className = 'msg user';
       userMsg.innerText = text;
       messagesContainer.appendChild(userMsg);
+      await persistMessage('user', text);
 
       const enableWebSearch = document.getElementById('param-websearch').checked;
       const enableLocation = document.getElementById('param-location-toggle').checked;
@@ -2147,6 +2328,7 @@ print(response.choices[0].message.content)</div>
 
         if (fullText.trim()) {
           chatConversationHistory.push({ role: 'assistant', content: fullText });
+          await persistMessage('assistant', fullText);
         }
       } catch (e) {
         if (e.name === 'AbortError') {

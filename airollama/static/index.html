@@ -1238,10 +1238,20 @@
       }
     }
 
-    async function onRamCapChanged(val) {
-      const slider = document.getElementById('param-max-ram');
+    function updateRamSliderDisplay(val) {
+      const slider = document.getElementById('param-ram-limit') || document.getElementById('param-max-ram');
       if (slider && slider.disabled) return;
+      const badge = document.getElementById('ram-slider-val');
+      if (badge) {
+        badge.innerText = `${parseFloat(val).toFixed(1)} GB`;
+      }
       updateRamCapBadge(val);
+    }
+
+    async function onRamCapChanged(val) {
+      const slider = document.getElementById('param-ram-limit') || document.getElementById('param-max-ram');
+      if (slider && slider.disabled) return;
+      updateRamSliderDisplay(val);
       const select = document.getElementById('chat-model-select');
       const modelName = select ? select.value : '';
       if (modelName) {
@@ -1250,7 +1260,7 @@
     }
 
     function setRamPreset(type) {
-      const slider = document.getElementById('param-max-ram');
+      const slider = document.getElementById('param-ram-limit') || document.getElementById('param-max-ram');
       if (!slider || slider.disabled) return;
       const minRam = currentModelData ? currentModelData.min_ram_gb : 2.5;
       const recRam = currentModelData ? currentModelData.recommended_ram_gb : 8.0;
@@ -1263,7 +1273,7 @@
       } else if (type === 'max') {
         slider.value = sizeRam;
       }
-      onRamCapChanged(slider.value);
+      updateRamSliderDisplay(slider.value);
     }
 
     let isGenerating = false;
@@ -1375,19 +1385,29 @@
     }
 
     async function onModelSelectChange(modelName, triggerPreload = true) {
+      const select = document.getElementById('chat-model-select');
+      if (!modelName && select) {
+        modelName = select.value;
+      }
       if (!modelName) return;
+
+      const titleEl = document.getElementById('chat-active-model-title');
+      if (titleEl) {
+        titleEl.innerText = modelName;
+      }
+
       updateRamControlsState(modelName);
       try {
         const res = await fetch(`/api/ram_requirements?model=${encodeURIComponent(modelName)}`);
         if (res.ok) {
           const data = await res.json();
           currentModelData = Object.assign({}, data, { name: modelName });
-          const slider = document.getElementById('param-max-ram');
+          const slider = document.getElementById('param-ram-limit') || document.getElementById('param-max-ram');
           const autoVal = data.recommended_ram_gb || data.min_ram_gb;
           if (slider) {
-            slider.min = Math.floor(data.min_ram_gb);
+            slider.min = Math.floor(data.min_ram_gb || 1);
             slider.value = autoVal;
-            updateRamCapBadge(autoVal);
+            updateRamSliderDisplay(autoVal);
           }
           if (triggerPreload) {
             preloadCurrentModel(true);
@@ -1561,9 +1581,14 @@
       userMsg.innerText = text;
       messagesContainer.appendChild(userMsg);
 
-      const enableWebSearch = document.getElementById('param-websearch').checked;
-      const enableLocation = document.getElementById('param-location-toggle').checked;
-      const customLocation = (document.getElementById('param-location-input').value || userSystemLocation).trim();
+      const websearchEl = document.getElementById('param-websearch');
+      const enableWebSearch = websearchEl ? websearchEl.checked : false;
+
+      const locationEl = document.getElementById('param-location-toggle');
+      const enableLocation = locationEl ? locationEl.checked : false;
+
+      const locInputEl = document.getElementById('param-location-input');
+      const customLocation = locInputEl ? locInputEl.value.trim() : (userSystemLocation || '');
 
       // Append Assistant Message Placeholder
       const assistantMsg = document.createElement('div');
@@ -1574,12 +1599,22 @@
 
       chatConversationHistory.push({ role: 'user', content: text });
 
-      const systemPrompt = (document.getElementById('param-system').value || '').trim();
+      const sysEl = document.getElementById('param-system');
+      const systemPrompt = sysEl ? sysEl.value.trim() : '';
       const payloadMessages = [];
       if (systemPrompt) {
         payloadMessages.push({ role: 'system', content: systemPrompt });
       }
       payloadMessages.push(...chatConversationHistory);
+
+      const tokensEl = document.getElementById('param-max-tokens') || document.getElementById('param-tokens');
+      const numPredict = tokensEl ? (parseInt(tokensEl.value, 10) || 2048) : 2048;
+
+      const tempEl = document.getElementById('param-temp');
+      const tempVal = tempEl ? (parseFloat(tempEl.value) || 0.7) : 0.7;
+
+      const ramEl = document.getElementById('param-ram-limit') || document.getElementById('param-max-ram');
+      const ramCapVal = ramEl ? (parseFloat(ramEl.value) || 8.0) : 8.0;
 
       chatAbortController = new AbortController();
       let fullText = '';
@@ -1596,9 +1631,9 @@
             web_search: enableWebSearch,
             location: enableLocation ? customLocation : null,
             options: {
-              num_predict: parseInt(document.getElementById('param-tokens').value || 2048),
-              temperature: parseFloat(document.getElementById('param-temp').value || 0.7),
-              max_ram_gb: parseFloat(document.getElementById('param-max-ram').value || 8)
+              num_predict: numPredict,
+              temperature: tempVal,
+              max_ram_gb: ramCapVal
             }
           })
         });

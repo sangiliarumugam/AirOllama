@@ -556,7 +556,7 @@
     /* Model Manager */
     .models-list {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
       gap: 1rem;
       margin-top: 1.5rem;
     }
@@ -568,6 +568,23 @@
       padding: 1.25rem;
       display: flex;
       justify-content: space-between;
+      align-items: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+      min-width: 0;
+    }
+
+    .model-card-info {
+      flex: 1 1 160px;
+      min-width: 0;
+      word-break: break-word;
+      overflow-wrap: anywhere;
+    }
+
+    .model-card-actions {
+      display: flex;
+      gap: 0.5rem;
+      flex-shrink: 0;
       align-items: center;
     }
 
@@ -1116,15 +1133,15 @@
           const card = document.createElement('div');
           card.className = 'model-card';
           card.innerHTML = `
-            <div>
-              <strong>${m.name}</strong>
+            <div class="model-card-info">
+              <strong style="word-break: break-all; overflow-wrap: anywhere; color: #ffffff;">${m.name}</strong>
               <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem;">
-                Size: <strong style="color: var(--accent-cyan);">${sizeDisplay}</strong> | Format: ${m.details.format}
+                Size: <strong style="color: var(--accent-cyan);">${sizeDisplay}</strong> | Format: ${m.details.format || 'gguf'}
               </div>
             </div>
-            <div style="display: flex; gap: 0.5rem;">
-              <button class="btn-primary" style="padding: 0.4rem 0.8rem; font-size: 0.8rem;" onclick="selectModelForChat('${m.name}')">Use</button>
-              <button class="btn-danger" style="padding: 0.4rem 0.8rem; font-size: 0.8rem;" onclick="deleteModel('${m.name}')">Delete</button>
+            <div class="model-card-actions">
+              <button class="btn-primary" style="padding: 0.45rem 0.85rem; font-size: 0.8rem; white-space: nowrap;" onclick="selectModelForChat('${m.name}')">Use</button>
+              <button class="btn-danger" style="padding: 0.45rem 0.85rem; font-size: 0.8rem; white-space: nowrap;" onclick="deleteModel('${m.name}')">Delete</button>
             </div>
           `;
           list.appendChild(card);

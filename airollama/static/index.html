@@ -1248,11 +1248,17 @@
       const select = document.getElementById('chat-model-select');
       const modelName = select ? select.value : '';
       if (modelName) {
+        // Purge current RAM allocation slate completely, then reload model with new RAM limit
+        try {
+          await fetch('/api/unload', { method: 'POST' });
+        } catch (e) {
+          console.warn("Unload before RAM change failed", e);
+        }
         await preloadCurrentModel(false);
       }
     }
 
-    function setRamPreset(type) {
+    async function setRamPreset(type) {
       const slider = document.getElementById('param-ram-limit') || document.getElementById('param-max-ram');
       if (!slider || slider.disabled) return;
       const minRam = currentModelData ? currentModelData.min_ram_gb : 2.5;
@@ -1266,7 +1272,7 @@
       } else if (type === 'max') {
         slider.value = sizeRam;
       }
-      updateRamSliderDisplay(slider.value);
+      await onRamCapChanged(slider.value);
     }
 
     let isGenerating = false;
@@ -1337,8 +1343,8 @@
       }
 
       try {
-        const slider = document.getElementById('param-max-ram');
-        const ramVal = parseFloat(slider ? slider.value : 8);
+        const slider = document.getElementById('param-ram-limit') || document.getElementById('param-max-ram');
+        const ramVal = parseFloat(slider ? slider.value : 8.0);
         const res = await fetch('/api/load', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },

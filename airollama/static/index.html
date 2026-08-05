@@ -922,7 +922,7 @@
             project_id: activeAgenticProjectId,
             title: "New Agent Thread",
             model: "",
-            role: "Antigravity Agent"
+            role: "Autonomous Agent"
           })
         });
         if (res.ok) {
@@ -963,7 +963,7 @@
       container.innerHTML = `
         <div style="background: rgba(0, 242, 254, 0.04); border: 1px solid rgba(0, 242, 254, 0.15); border-radius: 12px; padding: 1rem 1.25rem; font-size: 0.9rem; color: #cbd5e1;">
           <div style="font-weight: 700; color: var(--accent-cyan); margin-bottom: 0.35rem; display: flex; align-items: center; gap: 0.5rem;">
-            <span>⚡ Antigravity Agent Coding Interface</span>
+            <span>⚡ Agentic Coding Interface</span>
           </div>
           <div>Connected to lightweight SQLite database (<code>~/.airollama/airollama.db</code>). Conversations and project histories persist automatically across restarts.</div>
         </div>
@@ -1091,7 +1091,7 @@
       const modelSelect = document.getElementById('agentic-model-select');
       const modeSelect = document.getElementById('agentic-mode-select');
       const selectedModel = modelSelect ? modelSelect.value : '';
-      const selectedMode = modeSelect ? modeSelect.value : 'Antigravity';
+      const selectedMode = modeSelect ? modeSelect.value : 'Autonomous Agent';
 
       let fullAssistantText = '';
       let thoughtText = 'Analyzed workspace structure and applied context parameters.';
@@ -1104,7 +1104,7 @@
           body: JSON.stringify({
             model: selectedModel || (window.cachedModelsList && window.cachedModelsList.length > 0 ? window.cachedModelsList[0].name : 'gemma4:e4b'),
             messages: [
-              { role: "system", content: `You are AirOllama Antigravity Agent (${selectedMode}). Provide expert agentic software engineering solutions.` },
+              { role: "system", content: `You are AirOllama Autonomous Agent (${selectedMode}). Provide expert agentic software engineering solutions.` },
               { role: "user", content: promptText }
             ],
             stream: true
@@ -1176,10 +1176,6 @@
           inputEl.value += ` @${file} `;
         }
       }
-    }
-
-    function agenticOpenIDE() {
-      switchTab('playground');
     }
 
 

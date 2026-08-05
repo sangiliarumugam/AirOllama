@@ -61,7 +61,10 @@
       <!-- Top Header Control Bar -->
       <div style="height: 55px; border-bottom: 1px solid rgba(255, 255, 255, 0.08); display: flex; align-items: center; justify-content: space-between; padding: 0 1.25rem; background: #161a26;">
         <div style="display: flex; align-items: center; gap: 0.75rem;">
-          <h3 id="agentic-active-title" style="margin: 0; font-size: 1rem; font-weight: 600; color: #f8fafc;">Building Local LLM Server</h3>
+          <h3 id="agentic-active-title" onclick="agenticEditTitle()" title="Click to rename conversation" style="margin: 0; font-size: 1rem; font-weight: 600; color: #f8fafc; cursor: pointer; display: flex; align-items: center; gap: 0.4rem;">
+            Building Local LLM Server
+            <span style="font-size: 0.75rem; color: #64748b;">✏️</span>
+          </h3>
           <span id="agentic-active-project-tag" style="font-size: 0.75rem; background: rgba(0, 242, 254, 0.1); color: var(--accent-cyan); border: 1px solid rgba(0, 242, 254, 0.25); padding: 0.15rem 0.5rem; border-radius: 6px;">AirOllama Core</span>
         </div>
       </div>
@@ -123,7 +126,7 @@
 
             <!-- Right Controls: Mic & Send Button -->
             <div style="display: flex; align-items: center; gap: 0.5rem;">
-              <button title="Voice Input" style="background: transparent; border: none; color: #94a3b8; font-size: 1.1rem; cursor: pointer; padding: 0.2rem 0.4rem;">🎙️</button>
+              <button title="Voice Input" onclick="agenticVoiceInput()" style="background: transparent; border: none; color: #94a3b8; font-size: 1.1rem; cursor: pointer; padding: 0.2rem 0.4rem;">🎙️</button>
               <button id="agentic-btn-send" onclick="submitAgenticPrompt()" style="background: #ffffff; color: #0f172a; border: none; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 1rem; cursor: pointer; transition: transform 0.15 ease;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">→</button>
             </div>
 

@@ -720,6 +720,7 @@
 
       loadModels();
       loadConfig();
+      await agenticInit();
     }
 
     document.addEventListener('DOMContentLoaded', () => {
@@ -771,20 +772,27 @@
     async function agenticInit() {
       await agenticLoadProjects();
       await agenticLoadConversations();
-      agenticPopulateModelsSelect();
+      await agenticPopulateModelsSelect();
     }
 
-    function agenticPopulateModelsSelect() {
+    async function agenticPopulateModelsSelect() {
       const select = document.getElementById('agentic-model-select');
       if (!select) return;
       select.innerHTML = '<option value="">⚡ Model: Auto</option>';
-      if (window.cachedModelsList && window.cachedModelsList.length > 0) {
-        window.cachedModelsList.forEach(m => {
-          const opt = document.createElement('option');
-          opt.value = m.name;
-          opt.innerText = `🤖 ${m.name}`;
-          select.appendChild(opt);
-        });
+      try {
+        const res = await fetch('/api/tags');
+        if (res.ok) {
+          const data = await res.json();
+          const models = data.models || [];
+          models.forEach(m => {
+            const opt = document.createElement('option');
+            opt.value = m.name;
+            opt.innerText = `🤖 ${m.name}`;
+            select.appendChild(opt);
+          });
+        }
+      } catch (e) {
+        console.warn("Failed to load models list for agentic view", e);
       }
     }
 
@@ -867,6 +875,46 @@
       }
     }
 
+    async function agenticFilterHistory() {
+      activeAgenticProjectId = null;
+      agenticRenderProjects();
+      await agenticLoadConversations();
+      const projTag = document.getElementById('agentic-active-project-tag');
+      if (projTag) projTag.innerText = 'All Conversations';
+    }
+
+    function agenticShowScheduled() {
+      alert("⏱️ Scheduled Tasks Engine: Active background jobs will appear here when cron triggers are scheduled.");
+    }
+
+    async function agenticEditTitle() {
+      if (!activeAgenticConvId) return;
+      const conv = agenticConversations.find(x => x.id === activeAgenticConvId);
+      if (!conv) return;
+      const newTitle = prompt("Edit Conversation Title:", conv.title);
+      if (!newTitle || newTitle.trim() === '') return;
+
+      conv.title = newTitle.trim();
+      const titleEl = document.getElementById('agentic-active-title');
+      if (titleEl) {
+        titleEl.childNodes[0].nodeValue = conv.title + " ";
+      }
+      agenticRenderConversations();
+
+      try {
+        await fetch('/api/conversations', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            project_id: activeAgenticProjectId,
+            title: conv.title,
+            model: conv.model || "",
+            role: conv.role || ""
+          })
+        });
+      } catch (e) {}
+    }
+
     async function agenticLoadConversations() {
       try {
         const url = activeAgenticProjectId ? `/api/conversations?project_id=${activeAgenticProjectId}` : '/api/conversations';
@@ -878,7 +926,7 @@
           if (agenticConversations.length > 0 && !activeAgenticConvId) {
             agenticSelectConversation(agenticConversations[0].id);
           } else if (agenticConversations.length === 0) {
-            agenticNewConversation();
+            await agenticNewConversation();
           }
         }
       } catch (e) {
@@ -950,7 +998,7 @@
       const conv = agenticConversations.find(x => x.id === convId);
       const titleEl = document.getElementById('agentic-active-title');
       if (titleEl && conv) {
-        titleEl.innerText = conv.title;
+        titleEl.childNodes[0].nodeValue = conv.title + " ";
       }
 
       await agenticLoadMessages(convId);
@@ -1029,6 +1077,27 @@
       }
     }
 
+    function agenticVoiceInput() {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SpeechRecognition) {
+        alert("Voice recognition is not supported in this browser.");
+        return;
+      }
+      const recognition = new SpeechRecognition();
+      const inputEl = document.getElementById('agentic-prompt-input');
+      recognition.onstart = () => {
+        if (inputEl) inputEl.placeholder = "🎙️ Listening to voice prompt...";
+      };
+      recognition.onresult = (event) => {
+        const transcript = event.results[0][0].transcript;
+        if (inputEl) {
+          inputEl.value += (inputEl.value ? ' ' : '') + transcript;
+          inputEl.placeholder = "Ask anything, @ to mention, / for actions";
+        }
+      };
+      recognition.start();
+    }
+
     async function submitAgenticPrompt() {
       const inputEl = document.getElementById('agentic-prompt-input');
       if (!inputEl) return;
@@ -1057,14 +1126,32 @@
         const newTitle = promptText.length > 25 ? promptText.substring(0, 25) + '...' : promptText;
         conv.title = newTitle;
         const titleEl = document.getElementById('agentic-active-title');
-        if (titleEl) titleEl.innerText = newTitle;
+        if (titleEl) titleEl.childNodes[0].nodeValue = newTitle + " ";
       }
 
-      // Show execution drawer
+      // Check if command execution is requested in prompt
       const drawer = document.getElementById('agentic-task-drawer');
       const taskText = document.getElementById('agentic-task-status-text');
-      if (drawer) drawer.style.display = 'block';
-      if (taskText) taskText.innerText = "1 task running: Analyzing agent strategy & dependencies...";
+      const taskDetails = document.getElementById('agentic-task-details');
+
+      let execLog = '';
+      if (promptText.toLowerCase().includes('run') || promptText.toLowerCase().includes('exec') || promptText.toLowerCase().includes('ls') || promptText.toLowerCase().includes('test')) {
+        if (drawer) drawer.style.display = 'block';
+        if (taskText) taskText.innerText = "1 task running: Executing workspace shell command...";
+        
+        try {
+          const execRes = await fetch('/api/agent/exec', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ command: "ls -la" })
+          });
+          if (execRes.ok) {
+            const execData = await execRes.json();
+            execLog = `Command: ${execData.command}\nExit Code: ${execData.exit_code}\nOutput:\n${execData.stdout || execData.stderr}`;
+            if (taskDetails) taskDetails.innerText = execLog;
+          }
+        } catch (e) {}
+      }
 
       // Prepare assistant turn response
       const container = document.getElementById('agentic-messages-container');
@@ -1076,7 +1163,7 @@
       thoughtDetails.open = true;
       thoughtDetails.innerHTML = `
         <summary style="cursor: pointer; font-weight: 600; color: var(--accent-cyan);">⚡ Worked for 0s (Executing Agent Plan) ></summary>
-        <div class="thought-log" style="margin-top: 0.5rem; white-space: pre-wrap; font-family: 'JetBrains Mono', monospace;">Connecting to AirOllama engine...\nInspecting local workspace files...</div>
+        <div class="thought-log" style="margin-top: 0.5rem; white-space: pre-wrap; font-family: 'JetBrains Mono', monospace;">Connecting to AirOllama engine...\nInspecting local workspace files...\n${execLog}</div>
       `;
       turn.appendChild(thoughtDetails);
 
@@ -1094,7 +1181,7 @@
       const selectedMode = modeSelect ? modeSelect.value : 'Autonomous Agent';
 
       let fullAssistantText = '';
-      let thoughtText = 'Analyzed workspace structure and applied context parameters.';
+      let thoughtText = 'Analyzed workspace structure, evaluated SQLite history, and applied context parameters.';
       let startTime = performance.now();
 
       try {

@@ -1,0 +1,145 @@
+<!-- Agentic Coding (Google Antigravity Agent Interface) View Panel -->
+<div id="tab-agentic" class="view-panel">
+
+  <div class="antigravity-container" style="display: flex; width: 100%; height: calc(100vh - 85px); background: #12151e; color: #e2e8f0; border-radius: 12px; overflow: hidden; border: 1px solid rgba(255, 255, 255, 0.08); box-shadow: 0 12px 40px rgba(0,0,0,0.5);">
+    
+    <!-- LEFT SIDEBAR -->
+    <div class="antigravity-sidebar" style="width: 290px; min-width: 290px; background: #181c28; border-right: 1px solid rgba(255, 255, 255, 0.08); display: flex; flex-direction: column; padding: 1rem; gap: 1rem;">
+      
+      <!-- New Conversation Button -->
+      <button class="btn-primary" onclick="agenticNewConversation()" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 0.5rem; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.15); color: #ffffff; padding: 0.65rem 1rem; border-radius: 10px; font-weight: 600; cursor: pointer; transition: all 0.2s ease;">
+        <span style="font-size: 1.1rem; color: var(--accent-cyan);">+</span> New Conversation
+      </button>
+
+      <!-- Navigation Quick Links -->
+      <div style="display: flex; flex-direction: column; gap: 0.35rem; font-size: 0.9rem; color: #94a3b8;">
+        <div class="sidebar-item" onclick="agenticFilterHistory()" style="display: flex; align-items: center; gap: 0.6rem; padding: 0.5rem 0.75rem; border-radius: 8px; cursor: pointer; transition: background 0.2s ease;">
+          <span>🕒</span> <span>Conversation History</span>
+        </div>
+        <div class="sidebar-item" onclick="agenticShowScheduled()" style="display: flex; align-items: center; gap: 0.6rem; padding: 0.5rem 0.75rem; border-radius: 8px; cursor: pointer; transition: background 0.2s ease;">
+          <span>⏱️</span> <span>Scheduled Tasks</span>
+        </div>
+      </div>
+
+      <div style="height: 1px; background: rgba(255, 255, 255, 0.08); margin: 0.25rem 0;"></div>
+
+      <!-- Pinned Conversations (from SQLite Database) -->
+      <div style="flex: 1; display: flex; flex-direction: column; min-height: 0; overflow: hidden;">
+        <div style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: #64748b; letter-spacing: 0.05em; margin-bottom: 0.5rem;">
+          Pinned Conversations
+        </div>
+        <div id="agentic-conv-list" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 0.35rem; padding-right: 4px;">
+          <!-- Dynamically populated from SQLite -->
+        </div>
+      </div>
+
+      <div style="height: 1px; background: rgba(255, 255, 255, 0.08); margin: 0.25rem 0;"></div>
+
+      <!-- Projects Section (from SQLite Database) -->
+      <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <span style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: #64748b; letter-spacing: 0.05em;">Projects</span>
+          <div style="display: flex; gap: 0.4rem; color: #94a3b8;">
+            <span title="New Project" onclick="agenticPromptNewProject()" style="cursor: pointer; font-weight: bold; font-size: 1rem; color: var(--accent-cyan);">+</span>
+          </div>
+        </div>
+        <div id="agentic-project-list" style="max-height: 120px; overflow-y: auto; display: flex; flex-direction: column; gap: 0.25rem;">
+          <!-- Dynamically populated from SQLite -->
+        </div>
+      </div>
+
+      <!-- Footer Settings -->
+      <div style="margin-top: auto; padding-top: 0.75rem; border-top: 1px solid rgba(255, 255, 255, 0.08); display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; color: #94a3b8; cursor: pointer;" onclick="switchTab('settings')">
+        <span>⚙️</span> <span>Settings</span>
+      </div>
+
+    </div>
+
+    <!-- MAIN AGENT WORKSPACE -->
+    <div class="antigravity-main" style="flex: 1; display: flex; flex-direction: column; background: #12151e; position: relative; overflow: hidden;">
+      
+      <!-- Top Header Control Bar -->
+      <div style="height: 55px; border-bottom: 1px solid rgba(255, 255, 255, 0.08); display: flex; align-items: center; justify-content: space-between; padding: 0 1.25rem; background: #161a26;">
+        <div style="display: flex; align-items: center; gap: 0.75rem;">
+          <h3 id="agentic-active-title" style="margin: 0; font-size: 1rem; font-weight: 600; color: #f8fafc;">Building Local LLM Server</h3>
+          <span id="agentic-active-project-tag" style="font-size: 0.75rem; background: rgba(0, 242, 254, 0.1); color: var(--accent-cyan); border: 1px solid rgba(0, 242, 254, 0.25); padding: 0.15rem 0.5rem; border-radius: 6px;">AirOllama Core</span>
+        </div>
+
+        <div style="display: flex; align-items: center; gap: 0.75rem;">
+          <button onclick="agenticOpenIDE()" style="background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.12); color: #e2e8f0; padding: 0.35rem 0.85rem; border-radius: 8px; font-size: 0.85rem; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 0.4rem;">
+            <span>A</span> Open IDE
+          </button>
+        </div>
+      </div>
+
+      <!-- Messages & Thought Container -->
+      <div id="agentic-messages-container" style="flex: 1; overflow-y: auto; padding: 1.5rem; display: flex; flex-direction: column; gap: 1.25rem;">
+        
+        <!-- Welcome Greeting -->
+        <div style="background: rgba(0, 242, 254, 0.04); border: 1px solid rgba(0, 242, 254, 0.15); border-radius: 12px; padding: 1rem 1.25rem; font-size: 0.9rem; color: #cbd5e1;">
+          <div style="font-weight: 700; color: var(--accent-cyan); margin-bottom: 0.35rem; display: flex; align-items: center; gap: 0.5rem;">
+            <span>⚡ Antigravity Agent Coding Interface</span>
+          </div>
+          <div>Connected to lightweight SQLite database (<code>~/.airollama/airollama.db</code>). Conversations and project histories persist automatically across restarts.</div>
+        </div>
+
+      </div>
+
+      <!-- Floating Task Execution Drawer -->
+      <div id="agentic-task-drawer" style="display: none; background: rgba(20, 26, 40, 0.95); border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 12px; margin: 0 1.5rem 0.5rem 1.5rem; padding: 0.6rem 1rem; backdrop-filter: blur(10px);">
+        <div style="display: flex; justify-content: space-between; align-items: center; cursor: pointer;" onclick="agenticToggleTaskDetails()">
+          <div style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; color: #94a3b8;">
+            <span id="agentic-task-spinner" class="spinner" style="width: 14px; height: 14px; border-width: 2px;"></span>
+            <span id="agentic-task-status-text" style="color: #f1f5f9; font-weight: 500;">1 task running</span>
+          </div>
+          <span id="agentic-task-arrow" style="font-size: 0.75rem; color: #64748b;">v</span>
+        </div>
+        <div id="agentic-task-details" style="display: none; margin-top: 0.5rem; font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; background: rgba(0, 0, 0, 0.5); padding: 0.5rem 0.75rem; border-radius: 6px; color: #38bdf8; max-height: 100px; overflow-y: auto; white-space: pre-wrap;">
+          lsof -ti :11211 | xargs kill -9 || true pkill -f "python3 -m airollama.cli"
+        </div>
+      </div>
+
+      <!-- Bottom Floating Input Pill Bar -->
+      <div style="padding: 1rem 1.5rem 1.25rem 1.5rem; background: #12151e;">
+        <div style="background: rgba(26, 32, 48, 0.95); border: 1px solid rgba(255, 255, 255, 0.14); border-radius: 20px; padding: 0.85rem 1.1rem; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4); display: flex; flex-direction: column; gap: 0.75rem;">
+          
+          <!-- Text Input Field -->
+          <textarea id="agentic-prompt-input" placeholder="Ask anything, @ to mention, / for actions" rows="2" style="width: 100%; background: transparent; border: none; outline: none; color: #f8fafc; font-size: 0.95rem; font-family: inherit; resize: none; line-height: 1.4; padding: 0;" onkeydown="handleAgenticKeyDown(event)"></textarea>
+
+          <!-- Bottom Control Row -->
+          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
+            
+            <div style="display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap;">
+              <!-- Add File Attachment Button -->
+              <button title="Attach context" onclick="agenticAttachFile()" style="background: rgba(255, 255, 255, 0.08); border: none; color: #94a3b8; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 1rem;">+</button>
+
+              <!-- Model Selector Badge -->
+              <select id="agentic-model-select" style="background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.12); color: #f1f5f9; padding: 0.3rem 0.65rem; border-radius: 14px; font-size: 0.8rem; font-weight: 500; outline: none; cursor: pointer;">
+                <option value="">⚡ Model: Auto</option>
+              </select>
+
+              <!-- Agent Mode Badge -->
+              <select id="agentic-mode-select" style="background: rgba(0, 242, 254, 0.1); border: 1px solid rgba(0, 242, 254, 0.25); color: var(--accent-cyan); padding: 0.3rem 0.75rem; border-radius: 14px; font-size: 0.8rem; font-weight: 600; outline: none; cursor: pointer;">
+                <option value="Antigravity">⚡ Antigravity Agent</option>
+                <option value="Pair Programmer">💻 Pair Programmer</option>
+                <option value="Software Architect">🚀 Software Architect</option>
+                <option value="Bug Hunter">🐛 Bug Hunter & Debugger</option>
+              </select>
+            </div>
+
+            <!-- Right Controls: Mic & Send Button -->
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+              <button title="Voice Input" style="background: transparent; border: none; color: #94a3b8; font-size: 1.1rem; cursor: pointer; padding: 0.2rem 0.4rem;">🎙️</button>
+              <button id="agentic-btn-send" onclick="submitAgenticPrompt()" style="background: #ffffff; color: #0f172a; border: none; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 1rem; cursor: pointer; transition: transform 0.15 ease;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">→</button>
+            </div>
+
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+</div>

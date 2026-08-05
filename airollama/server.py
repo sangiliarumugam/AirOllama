@@ -61,6 +61,8 @@ def is_api_only() -> bool:
 @app.api_route("/dashboard", methods=["GET", "HEAD"])
 @app.api_route("/playground", methods=["GET", "HEAD"])
 @app.api_route("/models", methods=["GET", "HEAD"])
+@app.api_route("/agentic", methods=["GET", "HEAD"])
+@app.api_route("/agent", methods=["GET", "HEAD"])
 @app.api_route("/settings", methods=["GET", "HEAD"])
 @app.api_route("/apidocs", methods=["GET", "HEAD"])
 async def get_root(request: Request):

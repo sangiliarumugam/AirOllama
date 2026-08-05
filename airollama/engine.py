@@ -183,6 +183,11 @@ class AirEngine:
         cfg = load_config()
         saved_dir = cfg.get("models_dir", "")
         self.models_dir = models_dir or (saved_dir if saved_dir else os.path.join(base_dir, "models"))
+        if os.path.islink(self.models_dir) and not os.path.exists(self.models_dir):
+            try:
+                os.unlink(self.models_dir)
+            except Exception:
+                pass
         os.makedirs(self.models_dir, exist_ok=True)
 
         self.device = self._select_device()

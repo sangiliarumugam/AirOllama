@@ -601,8 +601,8 @@ async def chat(req: ChatRequest, request: Request):
         search_results = perform_web_search(user_prompt.strip(), location_str=effective_location, max_results=4)
         if search_results or weather_info:
             search_context = format_search_context(user_prompt.strip(), search_results, weather_info=weather_info)
-            if messages:
-                messages[-1]["content"] = f"{messages[-1]['content']}\n{search_context}"
+    if req.model and (engine.current_model_name != req.model or (max_ram_gb is not None and getattr(engine, "current_ram_cap", None) != max_ram_gb)):
+        engine.load_model(req.model, max_ram_gb=max_ram_gb)
 
     prompt = engine.format_chat_prompt(messages)
 

@@ -1351,10 +1351,22 @@
             }
           }
 
+          if (buffer && buffer.trim()) {
+            try {
+              const data = JSON.parse(buffer.trim());
+              if (data.message && data.message.content) {
+                fullAssistantText += data.message.content;
+              } else if (data.response) {
+                fullAssistantText += data.response;
+              }
+            } catch (e) {}
+          }
+
           if (!fullAssistantText.trim()) {
             fullAssistantText = "I have processed your request.";
-            responseBody.innerHTML = formatMarkdown(fullAssistantText);
           }
+          responseBody.innerHTML = formatMarkdown(fullAssistantText);
+          container.scrollTop = container.scrollHeight;
         }
 
       } catch (err) {

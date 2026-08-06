@@ -1,0 +1,1 @@
+/Users/sangili/Projects/airollama/dist/AirOllama.app

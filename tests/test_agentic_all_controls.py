@@ -1,6 +1,6 @@
 """
-Playwright Comprehensive E2E Test Suite verifying ALL links, buttons, modals, and interactions
-on the AirOllama Agentic Coding page.
+Playwright Comprehensive E2E Test Suite verifying ALL links, buttons, modals, interactions,
+AND asserting real LLM agent responses on the AirOllama Agentic Coding page.
 """
 import time
 from playwright.sync_api import sync_playwright
@@ -16,15 +16,6 @@ def test_all_agentic_controls():
         page.on("console", lambda msg: print(f"BROWSER CONSOLE [{msg.type}]: {msg.text}"))
         page.on("pageerror", lambda err: print(f"BROWSER ERROR: {err}"))
         page.on("dialog", lambda dialog: print(f"BROWSER DIALOG: {dialog.message}") or dialog.accept())
-
-        # Mock /api/chat streaming response for deterministic test execution
-        def handle_chat_mock(route):
-            route.fulfill(
-                status=200,
-                content_type="application/x-ndjson",
-                body='{"message": {"role": "assistant", "content": "Hello! I am AirOllama Agent."}}\n'
-            )
-        page.route("**/api/chat", handle_chat_mock)
 
         print("📡 1. Navigating to AirOllama Dashboard...")
         page.goto(f"{BASE_URL}/dashboard", wait_until="networkidle")
@@ -117,16 +108,24 @@ def test_all_agentic_controls():
         mode_select.select_option("Pair Programmer")
         time.sleep(0.2)
 
-        # Test prompt typing & submission
-        print("💬 11. Testing prompt submission & response stream...")
-        prompt_input.fill("Write a python unit test script for user login.")
+        # Test prompt typing & REAL submission to server
+        print("💬 11. Testing prompt submission & REAL response stream...")
+        prompt_input.fill("hi")
         send_btn.click()
 
-        time.sleep(1.0)
-        container = page.query_selector("#agentic-messages-container")
-        assert container is not None
+        # Wait for agent text response in .agentic-md-body
+        response_elem = page.wait_for_selector(".agentic-md-body", timeout=25000)
+        assert response_elem is not None, "Response body element missing"
 
-        print("✅ ALL Links, Buttons, Modals, and Interactions on Agentic Coding page PASSED 100%!")
+        page.wait_for_function(
+            "() => document.querySelector('.agentic-md-body') && document.querySelector('.agentic-md-body').innerText.trim().length > 0",
+            timeout=25000
+        )
+        response_text = page.locator(".agentic-md-body").inner_text()
+        print(f"🤖 Verified Agent Response: '{response_text.strip()}'")
+        assert len(response_text.strip()) > 0, "Agent response text is empty!"
+
+        print("✅ ALL Links, Buttons, Modals, Interactions, AND Real Agent Response PASSED 100%!")
         browser.close()
 
 if __name__ == "__main__":

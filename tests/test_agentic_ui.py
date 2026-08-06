@@ -1,5 +1,6 @@
 """
 Playwright Automation Test Script for AirOllama Agentic Coding Interface
+Asserts real model chat responses and UI components.
 """
 import time
 from playwright.sync_api import sync_playwright
@@ -7,7 +8,7 @@ from playwright.sync_api import sync_playwright
 BASE_URL = "http://127.0.0.1:11211"
 
 def test_agentic_coding_page_layout():
-    """Verify Agentic Coding page layout, project creation modal, sidebar controls, and floating prompt pill bar."""
+    """Verify Agentic Coding page layout, project creation modal, sidebar controls, floating prompt pill bar, and actual LLM response."""
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
         context = browser.new_context()
@@ -73,21 +74,28 @@ def test_agentic_coding_page_layout():
         assert mode_select is not None, "Agent mode selector dropdown missing"
         assert send_btn is not None, "Send button missing"
 
-        # 7. Test prompt input typing
-        print("💬 Typing test prompt in prompt input textarea...")
-        prompt_input.fill("Write a python script to check server status")
-        assert prompt_input.input_value() == "Write a python script to check server status", "Prompt input value mismatch"
+        # 7. Test prompt input typing & sending
+        print("💬 Typing prompt 'hi' in prompt input textarea...")
+        prompt_input.fill("hi")
+        assert prompt_input.input_value() == "hi", "Prompt input value mismatch"
 
-        # 8. Test send button click trigger
-        print("🚀 Clicking Send button...")
+        print("🚀 Clicking Send button & waiting for REAL agent response...")
         send_btn.click()
-        time.sleep(0.5)
+        
+        # Wait for agent text response in .agentic-md-body
+        response_elem = page.wait_for_selector(".agentic-md-body", timeout=25000)
+        assert response_elem is not None, "Response body container missing"
+        
+        # Assert that agent has responded with non-empty text content
+        page.wait_for_function(
+            "() => document.querySelector('.agentic-md-body') && document.querySelector('.agentic-md-body').innerText.trim().length > 0",
+            timeout=25000
+        )
+        response_text = page.locator(".agentic-md-body").inner_text()
+        print(f"🤖 Agent Response Received: '{response_text.strip()}'")
+        assert len(response_text.strip()) > 0, "Agent response text is empty!"
 
-        # Verify messages container exists and is active
-        container = page.query_selector("#agentic-messages-container")
-        assert container is not None, "Messages container missing"
-
-        print("✅ Agentic Coding Playwright UI Automation Test PASSED!")
+        print("✅ Agentic Coding Playwright UI Automation Test PASSED WITH VERIFIED AGENT RESPONSE!")
         browser.close()
 
 if __name__ == "__main__":

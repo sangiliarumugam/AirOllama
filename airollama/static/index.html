@@ -773,6 +773,17 @@
         .replace(/'/g, '&#039;');
     }
 
+    function formatMarkdown(text) {
+      if (!text) return '';
+      let html = escapeHtml(text);
+      html = html.replace(/```([\s\S]*?)```/g, '<pre style="background: rgba(0,0,0,0.5); padding: 0.75rem; border-radius: 8px; overflow-x: auto; font-family: monospace; border: 1px solid rgba(255,255,255,0.1);"><code>$1</code></pre>');
+      html = html.replace(/`([^`]+)`/g, '<code style="background: rgba(255,255,255,0.1); padding: 0.15rem 0.35rem; border-radius: 4px; font-family: monospace;">$1</code>');
+      html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+      html = html.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+      html = html.replace(/\n/g, '<br>');
+      return html;
+    }
+
     // --- AGENTIC CODING INTERFACE & SQLITE DATABASE INTEGRATION ---
     let activeAgenticProjectId = null;
     let activeAgenticConvId = null;

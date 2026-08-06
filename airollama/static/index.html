@@ -877,6 +877,7 @@
 
     async function agenticFilterHistory() {
       activeAgenticProjectId = null;
+      activeAgenticConvId = null;
       agenticRenderProjects();
       await agenticLoadConversations();
       const projTag = document.getElementById('agentic-active-project-tag');
@@ -889,7 +890,7 @@
 
     async function agenticEditTitle() {
       if (!activeAgenticConvId) return;
-      const conv = agenticConversations.find(x => x.id === activeAgenticConvId);
+      const conv = agenticConversations.find(x => String(x.id) === String(activeAgenticConvId));
       if (!conv) return;
       const newTitle = prompt("Edit Conversation Title:", conv.title);
       if (!newTitle || newTitle.trim() === '') return;
@@ -902,15 +903,10 @@
       agenticRenderConversations();
 
       try {
-        await fetch('/api/conversations', {
-          method: 'POST',
+        await fetch(`/api/conversations/${activeAgenticConvId}`, {
+          method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            project_id: activeAgenticProjectId,
-            title: conv.title,
-            model: conv.model || "",
-            role: conv.role || ""
-          })
+          body: JSON.stringify({ title: conv.title })
         });
       } catch (e) {}
     }
@@ -924,7 +920,7 @@
           agenticConversations = data.conversations || [];
           agenticRenderConversations();
           if (agenticConversations.length > 0 && !activeAgenticConvId) {
-            agenticSelectConversation(agenticConversations[0].id);
+            await agenticSelectConversation(agenticConversations[0].id);
           } else if (agenticConversations.length === 0) {
             await agenticNewConversation();
           }
@@ -944,11 +940,14 @@
       }
 
       agenticConversations.forEach(c => {
-        const isActive = activeAgenticConvId === c.id;
+        const isActive = String(activeAgenticConvId) === String(c.id);
         const item = document.createElement('div');
         item.style.cssText = `display: flex; align-items: center; justify-content: space-between; padding: 0.5rem 0.65rem; border-radius: 8px; cursor: pointer; font-size: 0.85rem; color: ${isActive ? '#ffffff' : '#cbd5e1'}; background: ${isActive ? 'rgba(0,242,254,0.12)' : 'transparent'}; border: ${isActive ? '1px solid rgba(0,242,254,0.25)' : '1px solid transparent'}; transition: all 0.2s ease;`;
         
-        item.onclick = () => agenticSelectConversation(c.id);
+        item.onclick = (e) => {
+          e.stopPropagation();
+          agenticSelectConversation(c.id);
+        };
 
         item.innerHTML = `
           <div style="display: flex; flex-direction: column; overflow: hidden; gap: 0.15rem; flex: 1;">
@@ -975,8 +974,9 @@
         });
         if (res.ok) {
           const conv = await res.json();
+          activeAgenticConvId = conv.id;
           await agenticLoadConversations();
-          agenticSelectConversation(conv.id);
+          await agenticSelectConversation(conv.id);
         }
       } catch (e) {
         console.error("Failed to create new conversation", e);
@@ -984,18 +984,19 @@
     }
 
     async function agenticDeleteConversation(e, convId) {
-      e.stopPropagation();
+      if (e) e.stopPropagation();
       try {
         await fetch(`/api/conversations/${convId}`, { method: 'DELETE' });
-        if (activeAgenticConvId === convId) activeAgenticConvId = null;
+        if (String(activeAgenticConvId) === String(convId)) activeAgenticConvId = null;
         await agenticLoadConversations();
       } catch (err) {}
     }
 
     async function agenticSelectConversation(convId) {
+      if (!convId) return;
       activeAgenticConvId = convId;
       agenticRenderConversations();
-      const conv = agenticConversations.find(x => x.id === convId);
+      const conv = agenticConversations.find(x => String(x.id) === String(convId));
       const titleEl = document.getElementById('agentic-active-title');
       if (titleEl && conv) {
         titleEl.childNodes[0].nodeValue = conv.title + " ";
@@ -1121,12 +1122,20 @@
       } catch (e) {}
 
       // Update thread title if first message
-      const conv = agenticConversations.find(x => x.id === activeAgenticConvId);
-      if (conv && conv.title === 'New Agent Thread') {
+      const conv = agenticConversations.find(x => String(x.id) === String(activeAgenticConvId));
+      if (conv && (conv.title === 'New Agent Thread' || conv.title === 'New Coding Thread')) {
         const newTitle = promptText.length > 25 ? promptText.substring(0, 25) + '...' : promptText;
         conv.title = newTitle;
         const titleEl = document.getElementById('agentic-active-title');
         if (titleEl) titleEl.childNodes[0].nodeValue = newTitle + " ";
+        agenticRenderConversations();
+        try {
+          await fetch(`/api/conversations/${activeAgenticConvId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ title: newTitle })
+          });
+        } catch (e) {}
       }
 
       // Check if command execution is requested in prompt

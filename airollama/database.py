@@ -143,6 +143,33 @@ def delete_conversation(conversation_id: str) -> bool:
     conn.close()
     return True
 
+def update_conversation(conversation_id: str, title: Optional[str] = None, model: Optional[str] = None, role: Optional[str] = None) -> Optional[Dict[str, Any]]:
+    init_db()
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM conversations WHERE id = ?", (conversation_id,))
+    row = cursor.fetchone()
+    if not row:
+        conn.close()
+        return None
+    conv = dict(row)
+    new_title = title if title is not None else conv["title"]
+    new_model = model if model is not None else conv["model"]
+    new_role = role if role is not None else conv["role"]
+    now = datetime.now().isoformat()
+
+    cursor.execute(
+        "UPDATE conversations SET title = ?, model = ?, role = ?, updated_at = ? WHERE id = ?",
+        (new_title, new_model, new_role, now, conversation_id)
+    )
+    conn.commit()
+    conn.close()
+    conv["title"] = new_title
+    conv["model"] = new_model
+    conv["role"] = new_role
+    conv["updated_at"] = now
+    return conv
+
 # --- Message CRUD ---
 
 def get_conversation_messages(conversation_id: str) -> List[Dict[str, Any]]:

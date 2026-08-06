@@ -941,6 +941,18 @@ async def api_create_conversation(req: CreateConversationRequest):
     conv = db.create_conversation(req.project_id, req.title or "New Coding Thread", req.model or "", req.role or "")
     return conv
 
+class UpdateConversationRequest(BaseModel):
+    title: Optional[str] = None
+    model: Optional[str] = None
+    role: Optional[str] = None
+
+@app.put("/api/conversations/{conversation_id}")
+async def api_update_conversation(conversation_id: str, req: UpdateConversationRequest):
+    updated = db.update_conversation(conversation_id, req.title, req.model, req.role)
+    if not updated:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+    return updated
+
 @app.delete("/api/conversations/{conversation_id}")
 async def api_delete_conversation(conversation_id: str):
     db.delete_conversation(conversation_id)

@@ -1294,11 +1294,12 @@
       let startTime = performance.now();
 
       try {
+        const fallbackModel = (window.cachedModelsList && window.cachedModelsList.length > 0) ? window.cachedModelsList[0].name : '';
         const res = await fetch('/api/chat', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            model: selectedModel || (window.cachedModelsList && window.cachedModelsList.length > 0 ? window.cachedModelsList[0].name : 'gemma4:e4b'),
+            model: selectedModel || fallbackModel,
             messages: [
               { role: "system", content: `You are AirOllama Autonomous Agent (${selectedMode}). Provide expert agentic software engineering solutions.` },
               { role: "user", content: promptText }
@@ -1307,34 +1308,56 @@
           })
         });
 
-        const reader = res.body.getReader();
-        const decoder = new TextDecoder();
-        let buffer = '';
+        if (!res.ok) {
+          let errText = "Server HTTP " + res.status;
+          try {
+            const errJson = await res.json();
+            errText = errJson.detail || errJson.error || errText;
+          } catch(e) {}
+          fullAssistantText = `❌ Engine Error: ${errText}`;
+          responseBody.innerHTML = formatMarkdown(fullAssistantText);
+        } else {
+          const reader = res.body.getReader();
+          const decoder = new TextDecoder();
+          let buffer = '';
 
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
 
-          buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split('\n');
-          buffer = lines.pop();
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop();
 
-          for (const line of lines) {
-            const trimmed = line.trim();
-            if (!trimmed) continue;
-            try {
-              const data = JSON.parse(trimmed);
-              if (data.message && data.message.content) {
-                fullAssistantText += data.message.content;
-                responseBody.innerHTML = formatMarkdown(fullAssistantText);
-                container.scrollTop = container.scrollHeight;
-              }
-            } catch (err) {}
+            for (const line of lines) {
+              const trimmed = line.trim();
+              if (!trimmed) continue;
+              try {
+                const data = JSON.parse(trimmed);
+                if (data.message && data.message.content) {
+                  fullAssistantText += data.message.content;
+                  responseBody.innerHTML = formatMarkdown(fullAssistantText);
+                  container.scrollTop = container.scrollHeight;
+                } else if (data.response) {
+                  fullAssistantText += data.response;
+                  responseBody.innerHTML = formatMarkdown(fullAssistantText);
+                  container.scrollTop = container.scrollHeight;
+                } else if (data.error || data.detail) {
+                  fullAssistantText += `\n❌ Engine error: ${data.error || data.detail}`;
+                  responseBody.innerHTML = formatMarkdown(fullAssistantText);
+                }
+              } catch (err) {}
+            }
+          }
+
+          if (!fullAssistantText.trim()) {
+            fullAssistantText = "I have processed your request.";
+            responseBody.innerHTML = formatMarkdown(fullAssistantText);
           }
         }
 
       } catch (err) {
-        fullAssistantText += `\n\n❌ Error generating response: ${err.message}`;
+        fullAssistantText += `\n\n❌ Connection Error: ${err.message}`;
         responseBody.innerHTML = formatMarkdown(fullAssistantText);
       } finally {
         const durationSec = Math.round((performance.now() - startTime) / 1000);

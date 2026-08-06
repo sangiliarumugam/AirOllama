@@ -899,6 +899,34 @@ async def exec_workspace_command(req: AgentExecRequest, project_id: Optional[int
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.post("/api/utils/select_folder")
+async def select_native_folder():
+    """Trigger native OS folder picker dialog (macOS osascript / zenity) and return selected path."""
+    import sys, subprocess, os
+    selected_path = None
+    if sys.platform == "darwin":
+        cmd = 'osascript -e \'posix path of (choose folder with prompt "Select Project Directory")\''
+        try:
+            res = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=120)
+            if res.returncode == 0 and res.stdout.strip():
+                selected_path = res.stdout.strip().rstrip('/')
+        except Exception as e:
+            pass
+    elif sys.platform.startswith("linux"):
+        cmd = 'zenity --file-selection --directory --title="Select Project Directory"'
+        try:
+            res = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=120)
+            if res.returncode == 0 and res.stdout.strip():
+                selected_path = res.stdout.strip().rstrip('/')
+        except Exception:
+            pass
+    
+    if selected_path:
+        folder_name = os.path.basename(selected_path) or "New Project"
+        return {"cancelled": False, "path": selected_path, "name": folder_name}
+    return {"cancelled": True, "path": "", "name": ""}
+
+
 # --- Project & Conversation Database Endpoints ---
 
 class CreateProjectRequest(BaseModel):

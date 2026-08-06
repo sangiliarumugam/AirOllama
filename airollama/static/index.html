@@ -830,12 +830,63 @@
       });
     }
 
-    async function agenticPromptNewProject() {
-      const name = prompt("Enter Project Name:");
-      if (!name) return;
-      const defaultPath = "/Users/sangili/Projects/airollama";
-      const path = prompt("Enter Local Directory Path for Project:", defaultPath);
-      if (!path) return;
+    function agenticPromptNewProject() {
+      const modal = document.getElementById('agentic-project-modal');
+      const nameInput = document.getElementById('modal-proj-name');
+      const pathInput = document.getElementById('modal-proj-path');
+      if (nameInput) nameInput.value = '';
+      if (pathInput) pathInput.value = '/Users/sangili/Projects';
+      if (modal) modal.style.display = 'flex';
+    }
+
+    function agenticCloseProjectModal() {
+      const modal = document.getElementById('agentic-project-modal');
+      if (modal) modal.style.display = 'none';
+    }
+
+    async function agenticNativeBrowseFolder() {
+      const nameInput = document.getElementById('modal-proj-name');
+      const pathInput = document.getElementById('modal-proj-path');
+
+      try {
+        const res = await fetch('/api/utils/select_folder', { method: 'POST' });
+        if (res.ok) {
+          const data = await res.json();
+          if (!data.cancelled && data.path) {
+            if (pathInput) pathInput.value = data.path;
+            if (nameInput && (!nameInput.value || nameInput.value.trim() === '')) {
+              nameInput.value = data.name;
+            }
+            return;
+          }
+        }
+      } catch (e) {
+        console.warn("Backend native folder picker fallback", e);
+      }
+
+      if (window.showDirectoryPicker) {
+        try {
+          const dirHandle = await window.showDirectoryPicker();
+          if (dirHandle && dirHandle.name) {
+            if (nameInput && (!nameInput.value || nameInput.value.trim() === '')) {
+              nameInput.value = dirHandle.name;
+            }
+            if (pathInput) pathInput.value = `/Users/sangili/Projects/${dirHandle.name}`;
+          }
+        } catch (err) {}
+      }
+    }
+
+    async function agenticSubmitCreateProject() {
+      const nameInput = document.getElementById('modal-proj-name');
+      const pathInput = document.getElementById('modal-proj-path');
+      const name = nameInput ? nameInput.value.trim() : '';
+      const path = pathInput ? pathInput.value.trim() : '';
+
+      if (!name || !path) {
+        alert("Please specify both a project name and directory path.");
+        return;
+      }
 
       try {
         const res = await fetch('/api/projects', {
@@ -845,11 +896,15 @@
         });
         if (res.ok) {
           const newProj = await res.json();
+          agenticCloseProjectModal();
           await agenticLoadProjects();
           agenticSelectProject(newProj.id);
+        } else {
+          const err = await res.json();
+          alert("Failed to create project: " + (err.detail || "Invalid path"));
         }
       } catch (e) {
-        alert("Failed to create project: " + e.message);
+        alert("Error creating project: " + e.message);
       }
     }
 

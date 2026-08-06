@@ -763,6 +763,16 @@
       }
     }
 
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
     // --- AGENTIC CODING INTERFACE & SQLITE DATABASE INTEGRATION ---
     let activeAgenticProjectId = null;
     let activeAgenticConvId = null;

@@ -39,7 +39,7 @@ def test_agentic_coding_page_layout():
 
         # 4. Test Project Creation `+` button and Modal
         print("📁 Testing Create Project `+` button...")
-        add_proj_btn = page.query_selector("span[title='New Project']")
+        add_proj_btn = page.query_selector("button[title='New Project']")
         assert add_proj_btn is not None, "New Project `+` button missing"
         add_proj_btn.click()
         time.sleep(0.5)

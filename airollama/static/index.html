@@ -830,13 +830,55 @@
       });
     }
 
-    function agenticPromptNewProject() {
+    async function agenticPromptNewProject() {
       const modal = document.getElementById('agentic-project-modal');
       const nameInput = document.getElementById('modal-proj-name');
       const pathInput = document.getElementById('modal-proj-path');
-      if (nameInput) nameInput.value = '';
-      if (pathInput) pathInput.value = '/Users/sangili/Projects';
-      if (modal) modal.style.display = 'flex';
+      
+      if (modal) {
+        if (nameInput) nameInput.value = '';
+        if (pathInput) pathInput.value = '/Users/sangili/Projects';
+        modal.style.display = 'flex';
+      } else {
+        try {
+          const res = await fetch('/api/utils/select_folder', { method: 'POST' });
+          if (res.ok) {
+            const data = await res.json();
+            if (!data.cancelled && data.path) {
+              const name = prompt("Confirm Project Name:", data.name) || data.name;
+              const createRes = await fetch('/api/projects', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: name, path: data.path })
+              });
+              if (createRes.ok) {
+                const newProj = await createRes.json();
+                await agenticLoadProjects();
+                agenticSelectProject(newProj.id);
+                return;
+              }
+            }
+          }
+        } catch (e) {}
+
+        const fallbackName = prompt("Enter Project Name:");
+        if (!fallbackName) return;
+        const fallbackPath = prompt("Enter Local Directory Path for Project:", "/Users/sangili/Projects");
+        if (!fallbackPath) return;
+
+        try {
+          const res = await fetch('/api/projects', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: fallbackName, path: fallbackPath })
+          });
+          if (res.ok) {
+            const newProj = await res.json();
+            await agenticLoadProjects();
+            agenticSelectProject(newProj.id);
+          }
+        } catch (e) {}
+      }
     }
 
     function agenticCloseProjectModal() {

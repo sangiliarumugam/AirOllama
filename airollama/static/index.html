@@ -794,6 +794,7 @@
         if (res.ok) {
           const data = await res.json();
           const models = data.models || [];
+          window.cachedModelsList = models;
           models.forEach(m => {
             const opt = document.createElement('option');
             opt.value = m.name;

@@ -558,8 +558,17 @@ async def chat(req: ChatRequest, request: Request):
             max_ram_gb = float(max_ram_gb)
         except (ValueError, TypeError):
             max_ram_gb = None
-
-
+    target_model = req.model
+    if not target_model or not target_model.strip():
+        if engine.current_model_name:
+            target_model = engine.current_model_name
+        else:
+            local_models = engine.list_local_models()
+            if local_models:
+                target_model = local_models[0]["name"]
+            else:
+                target_model = "gemma4:e4b"
+    req.model = target_model
 
     messages = [m.dict() for m in req.messages]
 

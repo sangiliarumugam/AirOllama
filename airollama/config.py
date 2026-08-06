@@ -56,7 +56,8 @@ def get_offload_dir() -> str:
     cfg = load_config()
     offload_dir = cfg.get("offload_dir", "").strip()
     if not offload_dir:
-        offload_dir = os.path.join(PROJECT_DIR, ".offload")
+        import tempfile
+        offload_dir = os.path.join(tempfile.gettempdir(), "airollama_offload")
     return os.path.abspath(os.path.expanduser(offload_dir))
 
 def save_config(updates: dict) -> dict:

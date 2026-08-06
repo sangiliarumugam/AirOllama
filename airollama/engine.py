@@ -26,35 +26,63 @@ import concurrent.futures
 
 class AsyncLayerPrefetcher:
     """
-    Asynchronous layer prefetcher for Accelerate disk-offloaded models (Solution 4 & 5).
-    Pre-loads OS kernel page cache for Layer N+1 / N+2 from SSD while Layer N executes on GPU/CPU.
+    Asynchronous layer prefetcher for Accelerate disk-offloaded models.
+    Pre-loads OS kernel page cache for Layer N+1 / N+2 from SSD while Layer N executes.
     """
     def __init__(self, offload_dir: str):
         self.offload_dir = offload_dir
-        self.executor = concurrent.futures.ThreadPoolExecutor(max_workers=2, thread_name_prefix="airollama_prefetch")
+        self.executor = concurrent.futures.ThreadPoolExecutor(max_workers=4, thread_name_prefix="airollama_prefetch")
         self.prefetched_layers = set()
+        self.layer_file_map = {}
+        self._index_offload_files()
+
+    def _index_offload_files(self):
+        """Index offloaded layer files once to eliminate repeated disk walks per layer."""
+        if not self.offload_dir or not os.path.exists(self.offload_dir):
+            return
+        try:
+            for root, _, files in os.walk(self.offload_dir):
+                for f in files:
+                    fp = os.path.join(root, f)
+                    for part in f.split('.'):
+                        if part.isdigit():
+                            idx = int(part)
+                            if idx not in self.layer_file_map:
+                                self.layer_file_map[idx] = []
+                            self.layer_file_map[idx].append(fp)
+        except Exception:
+            pass
 
     def prefetch_layer(self, layer_idx: int):
         """Asynchronously pre-read offload files for upcoming layer."""
-        if not self.offload_dir or not os.path.exists(self.offload_dir):
-            return
-        if layer_idx in self.prefetched_layers:
+        if not self.offload_dir or layer_idx in self.prefetched_layers:
             return
         self.prefetched_layers.add(layer_idx)
         self.executor.submit(self._do_prefetch, layer_idx)
 
     def _do_prefetch(self, layer_idx: int):
         try:
-            target_str = f"layers.{layer_idx}"
-            for root, _, files in os.walk(self.offload_dir):
-                for f in files:
-                    if target_str in f:
-                        fp = os.path.join(root, f)
-                        if os.path.exists(fp):
-                            with open(fp, "rb") as fh:
-                                # Warm OS page cache by reading chunks asynchronously into kernel memory
-                                while fh.read(1024 * 1024 * 4):  # 4MB chunks
-                                    pass
+            files = self.layer_file_map.get(layer_idx, [])
+            if not files:
+                # Fallback check if index misses specific naming schema
+                target_str = f"layers.{layer_idx}"
+                for root, _, f_names in os.walk(self.offload_dir):
+                    for f in f_names:
+                        if target_str in f:
+                            files.append(os.path.join(root, f))
+
+            for fp in files:
+                if os.path.exists(fp):
+                    if hasattr(os, "posix_fadvise"):
+                        try:
+                            fd = os.open(fp, os.O_RDONLY)
+                            os.posix_fadvise(fd, 0, 0, getattr(os, "POSIX_FADV_WILLNEED", 3))
+                            os.close(fd)
+                        except Exception:
+                            pass
+                    with open(fp, "rb") as fh:
+                        while fh.read(1024 * 1024 * 16):  # 16MB high-throughput chunks
+                            pass
         except Exception:
             pass
 
@@ -926,7 +954,7 @@ class AirEngine:
                 tokens_generated += 1
                 token_id = next_token.item()
 
-                if tokens_generated % 15 == 0:
+                if tokens_generated % 120 == 0:
                     gc.collect()
                     if torch.backends.mps.is_available():
                         try:
